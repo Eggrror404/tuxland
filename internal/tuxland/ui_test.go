@@ -420,7 +420,7 @@ func TestAWrappedHintKeepsItsVoice(t *testing.T) {
 	g := &game{ui: u, dir: "/home/freshman/linux-lab/level-01-navigation"}
 	g.warn("not there yet", "words words words words words words words words words")
 	lines := strings.Split(strings.TrimRight(stripANSI(buf.String()), "\n"), "\n")
-	if len(lines) < 3 {
+	if len(lines) < 2 {
 		t.Fatalf("the hint did not wrap: %q", lines)
 	}
 	if !strings.Contains(buf.String(), ansiDim+"not there yet") {
@@ -432,6 +432,102 @@ func TestAWrappedHintKeepsItsVoice(t *testing.T) {
 	for _, l := range lines[1:] {
 		if strings.Contains(buf.String(), ansiDim+strings.TrimSpace(stripANSI(l))) {
 			t.Errorf("a continuation line was painted dim: %q", l)
+		}
+	}
+}
+
+// TestAPromptAlwaysOpensItsOwnRow covers `clear` and Ctrl-L. Bash's prompt marker
+// is a single invisible character, so when a screen is cleared the marker arrives
+// with no newline in front of it and the cursor is left in the top-left corner —
+// and a prompt drawn straight there lands *beside* whatever the screen last held,
+// which is how one command could leave two prompts on one row. The newline belongs
+// to the game, so the game writes it.
+func TestAPromptAlwaysOpensItsOwnRow(t *testing.T) {
+	const p = ansiGreen + ansiBold + "tuxland$ " + ansiReset
+	for _, c := range []struct{ what, before, want string }{
+		{"nothing drawn yet", "", p},
+		{"a finished line of output", "readme.txt\n", p},
+		{"a cleared screen", "\x1b[H\x1b[2J", "\r\n" + p},
+		{"output with no trailing newline", "bash: bc: command not found", "\r\n" + p},
+	} {
+		var buf bytes.Buffer
+		u := newUI(&buf)
+		u.tty, u.color = true, true
+		u.write(c.before)
+		buf.Reset()
+		u.prompt()
+		if got := buf.String(); got != c.want {
+			t.Errorf("%s: the prompt drew %q, want %q", c.what, got, c.want)
+		}
+	}
+	// Into a pipe there is no cursor and no CR: the smoke test must stay plain.
+	var buf bytes.Buffer
+	u := newUI(&buf)
+	u.write("\x1b[H\x1b[2J")
+	buf.Reset()
+	u.prompt()
+	if got, want := buf.String(), "\ntuxland$ "; got != want {
+		t.Errorf("into a pipe the prompt drew %q, want %q", got, want)
+	}
+}
+
+// TestALineNeverLandsInTheMiddleOfOne: the game draws its lines wherever the
+// student left the terminal, and the normal place to leave it is parked after a
+// `tuxland$ ` prompt — so a warning written from there would print *after* that
+// prompt, on its row. That is the 50-second nudge's line and the Ctrl-D trap's
+// "not that one", both of which are drawn from that position.
+func TestALineNeverLandsInTheMiddleOfOne(t *testing.T) {
+	var buf bytes.Buffer
+	u := newUI(&buf)
+	u.cols = 80
+	g := &game{ui: u}
+	g.card("▶", "make a folder named `done`", "`mkdir` = make directory")
+	buf.Reset() // the student is now sitting at the prompt, about to type
+	g.warn("no rush", "make a folder named `done`")
+	lines := strings.Split(buf.String(), "\n")
+	if lines[0] != "" {
+		t.Errorf("the warning was drawn on the prompt's own row: %q", lines[0])
+	}
+	if n := strings.Count(buf.String(), "tuxland$"); n != 0 {
+		t.Errorf("speaking again drew another prompt onto the warning: %q", buf.String())
+	}
+}
+
+// TestTwoWarningsInOneBeatMakeTwoLines: the hint and the way out can land in the
+// same beat, and they have to read as two lines. A warn that drew a prompt of its
+// own had the second one printed on top of that prompt, overrunning the width the
+// rest of the game lays out to. The beat speaks twice and hands the terminal back
+// once, which is what `spoke` tells the caller.
+func TestTwoWarningsInOneBeatMakeTwoLines(t *testing.T) {
+	var buf bytes.Buffer
+	u := newUI(&buf)
+	u.cols = 80
+	g := &game{ui: u}
+	st := &stepState{
+		step: &step{
+			kind:  kindTask,
+			goal:  "make a folder named `done`",
+			hints: []string{"`mkdir done`", "`ls -l` shows the `d`"},
+			check: isDir("done"),
+		},
+		presses: stuckAfter,
+		fails:   hintAfter - 1, // this try is the one that reaches the hint
+	}
+	done, spoke := g.tryTask(st, true)
+	if done || !spoke {
+		t.Fatalf("a wrong try at a missing folder gave done=%v spoke=%v", done, spoke)
+	}
+	out := buf.String()
+	if n := strings.Count(out, "tuxland$"); n != 1 {
+		t.Errorf("the beat drew %d prompts, want 1:\n%s", n, out)
+	}
+	if n := strings.Count(out, "⚠"); n != 2 {
+		t.Errorf("the beat drew %d warnings, want the hint and the way out:\n%s", n, out)
+	}
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	for i, line := range lines[:len(lines)-1] { // the last line is the prompt
+		if !strings.HasPrefix(line, "  ") {
+			t.Errorf("warning line %d does not start in the margin: %q", i+1, line)
 		}
 	}
 }

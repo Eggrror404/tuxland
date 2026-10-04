@@ -38,6 +38,7 @@ type ui struct {
 	color   bool
 	cols    int  // 0 = ask the terminal; tests pin it
 	afterCR bool // the byte we wrote last was a CR; guarded by mu
+	atStart bool // the cursor sits at the start of a row, ready for text; guarded by mu
 }
 
 func newUI(w io.Writer) *ui {
@@ -45,7 +46,8 @@ func newUI(w io.Writer) *ui {
 	if f, ok := w.(*os.File); ok {
 		tty = term.IsTerminal(int(f.Fd()))
 	}
-	return &ui{w: w, tty: tty, color: tty}
+	// Nothing has been drawn yet, so the cursor is where a row begins.
+	return &ui{w: w, tty: tty, color: tty, atStart: true}
 }
 
 // width is how many columns we have to play with, or 80 when we can't ask
@@ -133,10 +135,21 @@ func (u *ui) rule(ch string, max int) string {
 func (u *ui) write(s string) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	u.writeLocked(s)
+}
+
+// writeLocked is write with the lock already held, for the callers that need to
+// look at what the last write did before deciding what to write next.
+func (u *ui) writeLocked(s string) {
+	if s == "" {
+		return // nothing was drawn, so the cursor did not move
+	}
 	if u.tty {
 		s = u.withCR(s)
 	}
 	io.WriteString(u.w, s)
+	// Where the next character lands, which prompt() needs to know.
+	u.atStart = strings.HasSuffix(s, "\n")
 }
 
 // withCR puts a carriage return in front of every LF that does not already have
@@ -159,14 +172,36 @@ func (u *ui) withCR(s string) string {
 	return b.String()
 }
 
-// line writes text followed by a newline.
-func (u *ui) line(s string) { u.write(s + "\n") }
+// line writes text as a line of its own: it opens a row first when the cursor is
+// not already at the start of one.
+//
+// The game draws its lines wherever the student left the terminal, and the normal
+// place to leave it is *parked after a `tuxland$ ` prompt*, waiting to be typed
+// at — so a line written from there would land in the middle of that row. The row
+// is the game's to open; the relay's bytes are not touched (see `write`), and
+// neither is a menu repaint, which is the one thing that means to rewrite the row
+// it is on.
+//
+// A blank line is already a row of its own — ending the row the cursor is in *is*
+// the blank line — so it is only ever one newline.
+func (u *ui) line(s string) {
+	if s == "" {
+		u.write("\n")
+		return
+	}
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if !u.atStart {
+		u.writeLocked("\n")
+	}
+	u.writeLocked(s + "\n")
+}
 
 // lines is line, under the name that says what the call site is doing. There is
 // no difference in behaviour: a card is drawn in one write precisely because
 // every write is atomic, so `lines` is about reading the call site, not about
 // getting a block onto the screen in one piece.
-func (u *ui) lines(s string) { u.write(s + "\n") }
+func (u *ui) lines(s string) { u.line(s) }
 
 // prose is how the game says anything longer than a line: `first` opens it (its
 // colours, and exactly as wide as `hang`), and the text is wrapped to the
@@ -419,7 +454,20 @@ func (u *ui) markup(s string) string {
 // prompt hands the terminal back to the student. The shell's own PS1 is an
 // invisible marker the relay strips (see session.go), so this line is the only
 // prompt on screen and a card and the shell's output can never fight over it.
-func (u *ui) prompt() { u.write(u.col(ansiGreen+ansiBold, "tuxland$ ")) }
+//
+// It always opens its own row, because the cursor is not always at the start of
+// one: `clear` and Ctrl-L leave it wherever the clear put it — the top left
+// corner, with nothing on the line — and a prompt written there would land
+// *beside* the last thing on screen (`tuxland$ tuxland$`). So the newline is the
+// game's, not bash's, and a prompt can never be drawn on top of a warning.
+func (u *ui) prompt() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if !u.atStart {
+		u.writeLocked("\n")
+	}
+	u.writeLocked(u.col(ansiGreen+ansiBold, "tuxland$ "))
+}
 
 // table lays out the level list. Three columns when the terminal has room for
 // them; otherwise each level gets two lines, so a narrow window never runs one

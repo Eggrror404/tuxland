@@ -181,11 +181,13 @@ func (g *game) ok(msg string) {
 	g.ui.prose(first, hangFor(first), msg)
 }
 
+// warn says that something is not right yet and what to try instead. It does not
+// hand the terminal back: the caller does, once, after everything it had to say
+// in this beat — a hint and the way out are two lines and one prompt.
 func (g *game) warn(prefix, hint string) {
 	u := g.ui
 	first := "  " + u.col(ansiYellow, "⚠") + " "
 	u.proseWith(first, hangFor(first), span{prefix, ansiDim}, span{" — " + hint, ""})
-	u.prompt()
 }
 
 func (g *game) cheer(s *step) {
@@ -363,6 +365,7 @@ func (g *game) runExitKeyBeat() bool {
 			switch p {
 			case trapOther:
 				g.warn("not that one", "the key to try is Ctrl-D — hold Ctrl, press D")
+				g.ui.prompt()
 			case trapStay:
 				if !asked {
 					asked = true // this is Ctrl-D itself: ask the question
@@ -553,7 +556,8 @@ func (g *game) supervise(st *stepState) bool {
 			if st.tried && now.Sub(st.since) >= nudgeEvery {
 				phrase := nudgePhrases[st.nudged%len(nudgePhrases)]
 				st.nudged++
-				g.warn(phrase, st.hint(st.fails+st.nudged))
+				g.warn(phrase, st.step.goal)
+				g.ui.prompt()
 				st.since = now
 			}
 		}
@@ -576,8 +580,11 @@ func (g *game) tryTask(st *stepState, driven bool) (done, spoke bool) {
 	}
 	st.fails++
 	if st.fails >= hintAfter {
+		// Two warnings, one prompt: the beat speaks twice and then hands the
+		// terminal back once, which is what `spoke` tells the caller.
 		g.warn("not there yet", st.hint(st.fails-hintAfter))
 		g.rescue(st)
+		g.ui.prompt()
 		return false, true
 	}
 	return false, false

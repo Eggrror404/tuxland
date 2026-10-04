@@ -135,6 +135,37 @@ rendered by a real command.
   underneath; **every prompt after it owes the student a line**, including one the student
   made alone (Ctrl-C, Ctrl-L) — the answer is "reported as `^C` and then nothing, but typing
   still works".
+  - **Why the game draws the prompt rather than bash printing `PS1` — measured, not
+    assumed.** PS1 was made visible for one experiment (`PS1=<marker>PS1>`), and the byte
+    stream of a passing beat is: `mkdir done\r\n` (the echo) → `PS1>` → `\r\n  ✅ seen it`
+    → `\r\n  ▶ the next card` → `tuxland$ `. **Bash prints its prompt before the game has
+    drawn anything**, one per command, and it does not print another until the next line —
+    so a bash-drawn prompt would sit *above* the ✅ and the new card, leaving the student to
+    type into a prompt at the top of a screen whose instructions are below it. The game
+    would still have to print a prompt after the card (or `\r`-repaint over bash's, as the
+    menu already does), and beats where bash prints nothing at all would need one anyway:
+    the Ctrl-D trap, where the game captures the keyboard and bash never sees a key, and the
+    level break and the exit screen. So the game-owned prompt is not about looks — colour is
+    available in PS1 too — it is one writer for the text *and* its prompt, in one atomic
+    ordered write, with the beats that have no shell covered by the same code path.
+  - **The trade the game gives up, stated plainly:** a shell-drawn prompt cannot double
+    itself. `clear` and Ctrl-L make bash redraw PS1 at the top left, which is exactly the
+    `tuxland$ tuxland$` this design had to fix by hand — a bug bash's own prompt would have
+    made structurally impossible. The fix is cheap (the writer remembers whether the cursor
+    is at the start of a row), and the alternative is two prompt sources plus a repaint.
+  - **The prompt opens its own row, and the newline is the game's.** The marker is one
+    invisible character, so a cleared screen delivers it with nothing in front of it and the
+    cursor at the top left — a prompt written straight there lands *beside* whatever the
+    screen last held, and a real `clear` (a card the ✦ toolbox teaches) produced
+    `tuxland$ tuxland$` on one row and left the cleared-away card undrawn. The writer
+    remembers whether the cursor is at the start of a row, and `prompt()` ends one when it
+    is not. It is a remembered byte, not a screen model, because the one thing that decides
+    this is whether the last thing written ended in a newline.
+- **A warning speaks; the caller hands the terminal back.** `warn` used to end in a prompt
+  of its own, which is right exactly once per beat — and the beat where the hint ladder
+  reaches the escape line draws *two* warnings. The second was printed on top of the first
+  one's prompt, overrunning the width everything else is laid out to. Now a beat speaks
+  twice and prompts once, in one place: the thing that knows whether it spoke.
 - **One keyboard for the whole run** (`keyboard.go`), not one stdin reader per level. A
   reader per level is a race: the reader left over from the previous level is still
   parked on stdin, so the first line of a new level could be written to a shell that had
@@ -856,6 +887,8 @@ none):
 | a hanging indent is as wide as the prefix it hangs from | `TestHangAlignsUnderItsPrefix` |
 | every line begins at column 0 on a terminal — no staircase down the right | `TestTheStudentSeesNoStaircase` |
 | a scripted run stays plain text: no colour, no carriage return | `TestAScriptedRunStaysClean` |
+| a prompt opens its own row, whatever the shell left the cursor on (a cleared screen ends in no newline at all) | `TestAPromptAlwaysOpensItsOwnRow` |
+| two warnings in one beat are two lines and one prompt — the hint ladder's escape line lands with the hint | `TestTwoWarningsInOneBeatMakeTwoLines` |
 
 ### The screen, not the bytes
 
