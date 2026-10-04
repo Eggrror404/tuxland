@@ -117,6 +117,9 @@ system changes, no shell history files. Bash mistakes here cost nothing.
   Nothing is installed and nothing is fetched: no root, no packages, no network.
   If an ssh session dies mid-level the game exits on its own and leaves no shell
   behind.
+  `$LINUXLAB_ROOT` moves the playground for tests and demos, and is checked
+  before anything is wiped: `~` is expanded, and `/`, your home folder and the
+  directory you started the game in are refused by name.
 - **Design (implemented):** the full spec is in [`DESIGN.md`](DESIGN.md) — guided labs
   on the real box (real bash in a pty, artifact checks + a flag-hunt finale per level,
   hints on mismatch, sections per level). No simulated shell. §7 is the level content

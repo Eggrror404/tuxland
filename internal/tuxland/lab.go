@@ -12,13 +12,65 @@ import (
 // Nothing outside this root is ever touched.
 func labRoot() (string, error) {
 	if dir := os.Getenv("LINUXLAB_ROOT"); dir != "" {
-		return dir, nil
+		return safeRoot(dir)
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("tuxland: no home directory: %w", err)
 	}
-	return filepath.Join(home, "linux-lab"), nil
+	return defaultRoot(home), nil
+}
+
+// defaultRoot is the folder the game asks for when nothing is set. ~/linux-lab:
+// a name of its own, so the one thing the game wipes is obviously the game's.
+func defaultRoot(home string) string { return filepath.Join(home, "linux-lab") }
+
+// safeRoot is $LINUXLAB_ROOT's answer, and the guard the variable deserves. Every
+// run wipes and rebuilds level-* inside this folder, so a root pointed at the
+// wrong place is a recursive delete aimed at somebody's work — and this is a
+// workshop tool, handed to students who type what they are told. So a pasted
+// `~` or `~/labs` is expanded (a quoted path is the obvious mistake, and a
+// literal `~` folder is not somewhere to put a playground), and the three
+// folders that must never be one — the filesystem root, the home folder itself,
+// and the directory the game was started in, which is what `LINUXLAB_ROOT=.`
+// means — are refused by name rather than discovered afterwards.
+func safeRoot(dir string) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("tuxland: no home directory: %w", err)
+	}
+	switch {
+	case dir == "~":
+		dir = home
+	case strings.HasPrefix(dir, "~/"):
+		dir = filepath.Join(home, strings.TrimPrefix(dir, "~/"))
+	case strings.HasPrefix(dir, "~"):
+		// ~someone's home. The game's own home is the only one it may guess at.
+		return "", fmt.Errorf("tuxland: LINUXLAB_ROOT %s is another account's home — spell the path out, "+
+			"or start it with ~/ for your own", dir)
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("tuxland: LINUXLAB_ROOT %q is not a usable path: %w", dir, err)
+	}
+	// A symlink only matters once it exists; EvalSymlinks failing on the folder
+	// the game is about to create is not a reason to refuse.
+	if real, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = real
+	}
+	if fi, err := os.Stat(abs); err == nil && !fi.IsDir() {
+		return "", fmt.Errorf("tuxland: LINUXLAB_ROOT %s is a file, not a folder", abs)
+	}
+	if cwd, err := os.Getwd(); err == nil {
+		for _, never := range []string{string(filepath.Separator), filepath.Clean(home), filepath.Clean(cwd)} {
+			if abs == never {
+				return "", fmt.Errorf("tuxland: refusing to use %s as LINUXLAB_ROOT — every run wipes and "+
+					"rebuilds the level folders inside it. Point it at a folder of its own, like %s",
+					abs, defaultRoot(home))
+			}
+		}
+	}
+	return abs, nil
 }
 
 // levelDirName is the playground folder a level lives in. The extra has no

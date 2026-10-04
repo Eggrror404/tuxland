@@ -197,7 +197,13 @@ rendered by a real command.
   must **never** be printed by the game itself — not in text, not in a hint.
 - **Scratch dir:** `<lab root>/level-NN-name/` per level, **wiped and rebuilt** when a
   level starts, so re-running with `-level N` is a reset. Nothing outside it is touched.
-  No sudo. `LINUXLAB_ROOT` makes the root relocatable for tests.
+  No sudo. `LINUXLAB_ROOT` makes the root relocatable for tests — and, because it aims the
+  only recursive delete in the game, it is checked before anything is wiped: `~` and `~/…`
+  are expanded (a quoted path is the obvious paste, and a literal `~` folder is not a place
+  to put a playground), `~someone` is refused, and three folders are refused by name —
+  `/`, the home folder itself, and the directory the game was started in, which is what
+  `LINUXLAB_ROOT=.` means. A workshop tool handed to students is the wrong place to rely on
+  a variable being set carefully.
 - **Progress:** finished levels are remembered in `<lab root>/progress.json`, written the
   moment a level's flag is found (atomically: a temp name, then a rename), so a run cut
   short still counts. The opening menu shows a ✅ per finished level, a one-line count,
@@ -900,6 +906,13 @@ none):
 | a scripted run stays plain text: no colour, no carriage return | `TestAScriptedRunStaysClean` |
 | a prompt opens its own row, whatever the shell left the cursor on (a cleared screen ends in no newline at all) | `TestAPromptAlwaysOpensItsOwnRow` |
 | two warnings in one beat are two lines and one prompt — the hint ladder's escape line lands with the hint | `TestTwoWarningsInOneBeatMakeTwoLines` |
+
+### The playground root
+
+| invariant | test |
+|---|---|
+| `/`, the home folder, the directory the game was started in, a literal `~` and `~someone` are refused as `$LINUXLAB_ROOT` | `TestTheLabRootRefusesAFolderItWouldWipe` |
+| a folder of its own is taken as asked, `~`/`~/…` expanded, the answer absolute, and asking creates nothing | `TestTheLabRootTakesAFolderOfItsOwn`, `TestTheLabRootDefaultsToALabFolder` |
 
 ### The screen, not the bytes
 
