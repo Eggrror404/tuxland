@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # `bc` because level 3 feeds a calculator to teach `<` and `|`, and `man`
+      # for the habits toolbox. Both are documented requirements in README.md —
+      # a level-3 run without `bc` stalls at the card that asks for it, so the
+      # session tests need them present to mean anything.
+      - name: Install the tools the game shells out to
+        run: sudo apt-get update && sudo apt-get install -y bc man-db
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      # No -short: the pty sessions (pty_test.go) and the typed replay
+      # (replay_test.go) are the ones that catch what a byte-level check cannot,
+      # and they are the reason this suite exists. See DESIGN.md §8.
+      - name: go test
+        run: go test ./...

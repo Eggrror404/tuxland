@@ -1,0 +1,64 @@
+name: release
+
+# Tag a version (v1.2.3) and this builds one static binary per platform and
+# attaches them to a GitHub release. `go install github.com/Eggrror404/tuxland@latest`
+# is the other install path and needs none of this.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          out="tuxland-${{ matrix.goos }}-${{ matrix.goarch }}"
+          go build -trimpath -ldflags '-s -w' -o "$out" .
+          sha256sum "$out" > "$out.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tuxland-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            tuxland-${{ matrix.goos }}-${{ matrix.goarch }}
+            tuxland-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Tag the release
+        run: gh release create "${GITHUB_REF_NAME}" dist/* --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
