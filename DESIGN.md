@@ -109,41 +109,26 @@ rendered by a real command.
 
 - Go module under a thin CLI (§6). Deps: `github.com/creack/pty`, `golang.org/x/term`,
   `golang.org/x/sys` (one ioctl, see the nudge below); everything else stdlib. `go.mod`
-  asks for the Go version `x/term` needs as its floor, not whatever toolchain happens to
-  be installed.
+  pins the project's own floor (Go 1.24) rather than whatever toolchain happens to be
+  installed, so a newer language version is a decision rather than an accident.
 - A real bash is spawned **inside a pseudo-terminal** (`--norc --noprofile -i`), with the
   level folder as its working directory and a plain custom `PS1`. Our stdin goes raw and
   every keystroke is forwarded to the pty verbatim, so Ctrl-C, arrows and tab reach bash
   untouched; pty output is relayed to the screen.
 - **The Enter boundary is bash's own prompt, and nothing guesses.** The game runs the
   current step's verification when the relay sees the `PS1` marker — the shell saying it
-  has nothing left to say. The first build guessed with a settle delay plus a quiet gap,
-  which put a visible pause on every command and drew the game's line *above* output that
-  had not arrived yet; the signal was already being read and thrown away. Answering on the
-  marker costs nothing the student can see, for a silent command and a chatty one alike.
-  - **The two fallback timers are gone, and silence is the reason.** They existed for a
-    bash that will never prompt again, and they guessed "finished" out of quiet. But quiet
-    is not evidence: `sleep 60` is quiet, so is a student reading `man ls`, and a timer
-    that cannot tell those from "done" answers a beat that is still running. Measured, the
-    guess was not a late prompt but a wrong screen — a prompt drawn into a busy terminal,
-    a task graded on the filesystem mid-command, and by the sixth attempt a spurious
-    "you deleted something, exit and restart". A guess here costs more than a late answer,
-    so nothing guesses: when bash will not prompt, the game waits for bash.
+  has nothing left to say. Answering on the marker costs nothing the student can see, for a
+  silent command and a chatty one alike.
+  - **Nothing guesses that a command has finished.** Quiet is not evidence: `sleep 60` is
+    quiet, so is a student reading `man ls`, and a timer that cannot tell those from "done"
+    answers a beat that is still running — which costs a wrong screen, not a late one. So
+    when bash will not prompt, the game waits for bash.
   - **What is left is two timers, each safe by shape rather than by tuning.** `backstop`
     re-reads the filesystem once a second while a task's command is still running, and
     either advances the step in silence or says nothing — it never speaks, so it cannot be
     wrong out loud. It exists for `mkdir done &`, where bash is back at its prompt before
-    the directory lands. The nudge speaks, so it asks the terminal first (§ below).
-  - **The one case the backstop cannot tell apart.** A foreground command that makes the
-    artifact *itself* — `sleep 60 && mkdir done` — passes the check while the command is
-    still on screen, so the card advances above a command that has not finished. This is
-    accepted, not fixed, because the ✅ is true and the alternative is worse: holding the
-    ✅ back would mean re-reporting a finished step later, after the student has moved on
-    to something else. It needs a command that both takes long enough to notice and lands
-    the artifact itself; the cards' own commands do not, and a student inventing one is
-    writing `sleep && mkdir`, which is the *one* shape where finishing early is what they
-    meant anyway. Gating the backstop on bash owning the terminal would not help — the
-    check has to be able to run while a command runs, that is its whole job.
+    the directory lands. Its one blind spot is in §10. The nudge speaks, so it asks the
+    terminal first (below).
   - **The one thing the game does ask the kernel: is bash the foreground process?**
     `session.atItsOwnPrompt` reads `TIOCGPGRP` off the pty and compares it with bash's own
     pid — one ioctl, taken at the moment the answer is needed, not polled. An interactive
@@ -632,7 +617,7 @@ one per line) and `about.txt`.
     cards therefore never claim `<` changes the output — they claim what `<` is *for*.
   - **So the level declares it, and the game refuses the level without it.** No card of L3
     can be passed without `bc` — not with `printf`, not with any hint — so a machine
-    without it used to reach a hint ladder with no way down, which is the one thing the
+    without it would reach a hint ladder with no way down, which is the one thing the
     escape line exists to prevent and cannot fix. `level.needs` is checked before the
     playground is scaffolded: the game names the program, says plainly that nothing was
     changed, and gives the install command. A level's `needs` are part of the content, not
@@ -868,11 +853,11 @@ played in a narrow (60-column) pty, since the cards lay themselves out to the wi
 are in. The build, deploy and dev-tool commands are in `README.md`; the decisions behind
 what was built are in §1 and §7.
 
-### The suite is structure-only, on purpose
+### What the suite checks, and what only a reviewer can
 
-**No test looks at what a level says.** `levels_test.go` holds the rules the game depends
-on, checked against every step of every level, so a level added tomorrow is covered without
-anyone remembering:
+**`levels_test.go` holds the rules the game depends on**, checked against every step of every
+level, so a level added tomorrow is covered without anyone remembering. No test asserts on
+*how* a level says something:
 
 | invariant | test |
 |---|---|
@@ -886,19 +871,12 @@ anyone remembering:
 | a level that borrows a program declares it, and declares it as one of its own advertised commands | `TestALevelSaysWhatItNeeds` |
 | the preflight check names what it cannot find, and nothing when there is nothing to find | `TestMissingToolsNamesWhatItCannotFind` |
 
-**Why the fixture counts are gone.** They used to sit here — `today.txt` has three lines,
-`urls.txt` has five distinct paths with no adjacent repeats, the hunt's script is fifty
-lines and calls its helper twenty times — and they only recorded what one author decided
-on one day, then failed the next person who reworded a card or renamed a helper. The worst
-was the last: renaming the hunt's helper from `glyph` to `mark`, leaving the level's
-behaviour byte-identical, failed a test asserting "has 20 glyph calls" while the replay
-beside it played level 5 to `LEVEL 5 COMPLETE`. That test is named here so nobody
-reinstates it.
-
-**Content quality is review, not test.** That a hunt's script is hard to read rather than
-merely unreadable, that a hint ladder escalates, that a goal names its target — those are
-judgement calls, recorded in §1 and §7, and a test can only ever hold them against the
-*next* person's rewording. Two layers do the work instead, and both are in the suite:
+**Content quality is review, not test.** Fixture counts do not belong in this table: they
+record what one author decided on one day and then fail the next person who reworded a card.
+That a hunt's script is hard to read rather than merely unreadable, that a hint ladder
+escalates, that a goal names its target — those are judgement calls, recorded in §1 and §7,
+and a test can only ever hold them against the *next* person's rewording. Two layers do the
+work instead, and both are in the suite:
 
 - **`replay_test.go` plays each level**, typing real commands into a throwaway playground
   through the real binary on a real pty, and waits for the level's own completion banner.
@@ -942,7 +920,7 @@ none):
 | a glob inside backticks keeps its star | `TestMarkupKeepsAGlobIntact` |
 | a hanging indent is as wide as the prefix it hangs from | `TestHangAlignsUnderItsPrefix` |
 | every line begins at column 0 on a terminal — no staircase down the right | `TestTheStudentSeesNoStaircase` |
-| a scripted run stays plain text: no colour, no carriage return | `TestAScriptedRunStaysClean` |
+| a scripted run stays plain text: no carriage return reaches a pipe | `TestAScriptedRunStaysClean` |
 | a prompt opens its own row, whatever the shell left the cursor on (a cleared screen ends in no newline at all) | `TestAPromptAlwaysOpensItsOwnRow` |
 | two warnings in one beat are two lines and one prompt — the hint ladder's escape line lands with the hint | `TestTwoWarningsInOneBeatMakeTwoLines` |
 
@@ -957,6 +935,7 @@ real bash and one real command.
 | a prompt marker cut in half by a read is still heard exactly once, and never reaches the screen | `TestAMarkerSplitAcrossTwoReadsIsStillHeard` |
 | only a real marker prefix is held for the next read — ordinary output is never delayed | `TestAChunkThatEndsInOrdinaryTextIsNeverHeldBack` |
 | the game can tell a student stuck at a prompt from a student in `man ls`, and it changes its mind back when the pager is left | `TestTheGameCanAskWhetherBashStillOwnsTheTerminal` |
+| a closed level leaves nothing behind — no goroutine, no `SIGWINCH` handler, nothing resizing a pty nobody is watching | `TestAClosedSessionLeavesNothingWatchingIt` |
 
 ### The playground root
 
@@ -1029,4 +1008,9 @@ the right thing one layer below the truth.
 - A nudge or ✅ printed while the student is mid-line leaves their text above it. The nudge
   waits for the terminal to belong to bash and the check only fires after a submitted line,
   so both are left alone.
+- The `backstop` (§3) cannot tell a finished command from one still running if the command
+  makes the artifact itself: `sleep 60 && mkdir done` advances the card while `sleep` is
+  still on screen. Accepted, because the ✅ is true and the alternative is worse — holding
+  it back re-reports a finished step after the student has moved on. Gating on bash owning
+  the terminal would not help: the check has to be able to run while a command runs.
 - L4 is long (§7). Accepted rather than split, because splitting renumbers the deck.

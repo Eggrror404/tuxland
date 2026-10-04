@@ -80,12 +80,13 @@ system changes, no shell history files. Bash mistakes here cost nothing.
 ## For developers
 
 - **Build:** `go build -o tuxland .` — Go ≥ 1.24, module
-  `github.com/Eggrror404/tuxland`, deps are `github.com/creack/pty` and
-  `golang.org/x/term` (nothing else). `go test ./...` runs the level invariants (no
+  `github.com/Eggrror404/tuxland`, deps are `github.com/creack/pty`,
+  `golang.org/x/term` and `golang.org/x/sys` (the last for one `TIOCGPGRP`, see
+  *No dead air* below); nothing else. `go test ./...` runs the level invariants (no
   step is free, tokens never leak into a card, every flag is planted), the layout
   invariants (nothing the game draws runs past the window at 40–200 columns, and at
-  80 columns the cards look like the ones in the design) and two real sessions on a
-  real pty, checked as a *screen* rather than as bytes — `DESIGN.md` §8 has every
+  80 columns the cards look like the ones in the design) and real sessions on a real
+  pty, checked as a *screen* rather than as bytes — `DESIGN.md` §8 has every
   invariant and the test that locks it.
 - **Deploy:** one static binary, no data files, no install step, nothing to keep in
   sync. `GOOS=linux GOARCH=amd64 go build -o tuxland .` cross-compiles for any target;
@@ -137,8 +138,8 @@ system changes, no shell history files. Bash mistakes here cost nothing.
   Linux, including the pty, hints, flag hunts, the level breaks and the exit ramp, and
   again in a narrow (60-column) pty since the cards lay themselves out to the window you
   are in. The opening menu, its ✅ progress and `progress.json` are covered the same way.
-  `DESIGN.md` §8 has every invariant the suite locks, why the suite is structure-only,
-  and the two bugs a byte-level check could not see.
+  `DESIGN.md` §8 has every invariant the suite locks, what it deliberately leaves to a
+  reviewer, and the two bugs a byte-level check could not see.
 
 ## How this was written
 
