@@ -50,6 +50,7 @@ type session struct {
 
 	started atomic.Bool // has bash printed a prompt yet?
 
+	closed    chan struct{} // closed by close(): every goroutine of this session ends
 	readyOnce sync.Once
 	closeOnce sync.Once
 }
@@ -95,6 +96,7 @@ func newSession(dir string, u *ui) (*session, error) {
 		events: make(chan event, 64),
 		wait:   make(chan struct{}),
 		ready:  make(chan struct{}),
+		closed: make(chan struct{}),
 	}
 	go s.relayOutput(u)
 	go s.watchWinsize()
@@ -266,6 +268,7 @@ func (s *session) scanFlag(chunk []byte) {
 // waiting on a terminal that will never answer again.
 func (s *session) close() {
 	s.closeOnce.Do(func() {
+		close(s.closed) // the watchers end here, not when the channel they wait on does
 		_ = s.cmd.Process.Signal(syscall.SIGHUP)
 		_ = s.ptmx.Close()
 		select {
@@ -278,12 +281,20 @@ func (s *session) close() {
 	})
 }
 
+// watchWinsize keeps bash's window the size of the window the game draws to. It
+// ends with the session: a level is a new session each time, and a SIGWINCH
+// handler left behind would keep resizing a pty nobody is watching.
 func (s *session) watchWinsize() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGWINCH)
 	defer signal.Stop(ch)
-	for range ch {
-		_ = pty.Setsize(s.ptmx, winsize())
+	for {
+		select {
+		case <-s.closed:
+			return
+		case <-ch:
+			_ = pty.Setsize(s.ptmx, winsize())
+		}
 	}
 }
 

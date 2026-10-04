@@ -119,3 +119,40 @@ func TestTheGameCanAskWhetherBashStillOwnsTheTerminal(t *testing.T) {
 		t.Error("bash did not take the terminal back after Ctrl-C")
 	}
 }
+
+// TestAClosedSessionLeavesNothingWatchingIt: a level is a new session each time, and
+// the winsize watcher is the one goroutine that waits on something the pty closing
+// does not end. Left behind, it keeps a signal handler registered and keeps resizing
+// a closed pty — so three levels in, every window drag costs three resizes to
+// nothing. Sessions are opened and closed in a loop and the goroutine count has to
+// come back down.
+func TestAClosedSessionLeavesNothingWatchingIt(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("no bash on PATH")
+	}
+	// Warm up first: the first session pays for lazily-started runtime machinery
+	// (the timer for a bash that has not exited yet, notably) that is not a leak.
+	warm, err := newSession(t.TempDir(), newUI(io.Discard))
+	if err != nil {
+		t.Fatalf("newSession: %v", err)
+	}
+	warm.close()
+	time.Sleep(250 * time.Millisecond)
+
+	before := runtime.NumGoroutine()
+	for i := 0; i < 5; i++ {
+		s, err := newSession(t.TempDir(), newUI(io.Discard))
+		if err != nil {
+			t.Fatalf("newSession: %v", err)
+		}
+		s.close()
+	}
+	var after int
+	for until := time.Now().Add(5 * time.Second); time.Now().Before(until); {
+		if after = runtime.NumGoroutine(); after <= before {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Errorf("five closed sessions left %d goroutines running, was %d before them", after-before, before)
+}
