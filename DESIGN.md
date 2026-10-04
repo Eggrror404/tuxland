@@ -128,7 +128,12 @@ rendered by a real command.
   say about. A real `PS1` collides with the ✅ line and risks injecting a newline into a
   half-typed command, and the relay strips the marker so there is always exactly one prompt
   on screen. Readline silently swallows `PS1=U+0001`, so the marker is U+2060 (a word
-  joiner: invisible, and stripped anyway). The marker doubles as the "bash is up" signal —
+  joiner: invisible, and stripped anyway). A read from a pty ends wherever it ends, so a
+  three-byte marker can be cut in half; the relay holds back only the bytes that could
+  still grow into one — the same carry-over the flag token already had — so a split marker
+  is neither missed nor allowed to leak a stray invisible character into the output. A
+  chunk ending in ordinary text is written whole and at once, so nothing is ever delayed
+  waiting for a marker that was never coming. The marker doubles as the "bash is up" signal —
   keystrokes that reach a pty before bash has set its own termios get flushed by it — so the
   game waits for the shell's first prompt before printing a level's first card. That first
   marker raises no event, because the card answers for it by drawing its own line
@@ -906,6 +911,15 @@ none):
 | a scripted run stays plain text: no colour, no carriage return | `TestAScriptedRunStaysClean` |
 | a prompt opens its own row, whatever the shell left the cursor on (a cleared screen ends in no newline at all) | `TestAPromptAlwaysOpensItsOwnRow` |
 | two warnings in one beat are two lines and one prompt — the hint ladder's escape line lands with the hint | `TestTwoWarningsInOneBeatMakeTwoLines` |
+
+### When the game may speak
+
+The marker is byte logic, so it is checked as byte logic, not through a pty wait.
+
+| invariant | test |
+|---|---|
+| a prompt marker cut in half by a read is still heard exactly once, and never reaches the screen | `TestAMarkerSplitAcrossTwoReadsIsStillHeard` |
+| only a real marker prefix is held for the next read — ordinary output is never delayed | `TestAChunkThatEndsInOrdinaryTextIsNeverHeldBack` |
 
 ### The playground root
 

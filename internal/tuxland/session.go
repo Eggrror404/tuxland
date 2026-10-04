@@ -45,6 +45,7 @@ type session struct {
 	mu    sync.Mutex
 	token string // the armed flag token, empty when no hunt is active
 	tail  []byte // trailing bytes, so a token split across two reads still matches
+	head  []byte // trailing bytes that could still become a prompt marker
 
 	lastOut atomic.Int64 // UnixNano of the last byte bash printed
 	started atomic.Bool  // has bash printed a prompt yet?
@@ -130,17 +131,15 @@ func (s *session) relayOutput(u *ui) {
 	for {
 		n, err := s.ptmx.Read(buf)
 		if n > 0 {
-			out := buf[:n]
 			// The marker is bash saying it is done: everything it had to say
 			// is in this stream, ahead of the marker, and it will not print
 			// again until the next line. That is the shell's own "you may
 			// speak now", so the game can answer at once instead of guessing
 			// how long a command takes — and unlike a fixed wait it is never
 			// wrong about a slow command.
-			idle := bytes.Contains(out, bashReadyBytes)
+			out, idle := s.takeMarker(buf[:n])
 			if idle {
 				s.readyOnce.Do(func() { close(s.ready) })
-				out = bytes.ReplaceAll(out, bashReadyBytes, nil)
 			}
 			if len(out) > 0 || idle {
 				// a bare prompt counts as bash talking too, for the quiet gap
@@ -161,6 +160,33 @@ func (s *session) relayOutput(u *ui) {
 			return
 		}
 	}
+}
+
+// takeMarker strips the prompt marker out of a chunk and reports whether it held
+// one. A read ends wherever it ends and the marker is three bytes, so the bytes
+// that could still grow into one are held back and prepended to the next chunk —
+// the same carry-over scanFlag does for the flag token. Only a real prefix is
+// held, so a chunk ending in ordinary text is written whole and at once and
+// nothing waits for a marker that was never coming.
+func (s *session) takeMarker(chunk []byte) (out []byte, found bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	buf := make([]byte, 0, len(s.head)+len(chunk))
+	buf = append(buf, s.head...)
+	buf = append(buf, chunk...)
+	if bytes.Contains(buf, bashReadyBytes) {
+		found = true
+		buf = bytes.ReplaceAll(buf, bashReadyBytes, nil)
+	}
+	s.head = nil
+	for keep := len(bashReadyBytes) - 1; keep > 0; keep-- {
+		if bytes.HasSuffix(buf, bashReadyBytes[:keep]) {
+			s.head = append([]byte(nil), buf[len(buf)-keep:]...)
+			buf = buf[:len(buf)-keep]
+			break
+		}
+	}
+	return buf, found
 }
 
 // keys writes a chunk of keystrokes to bash untouched — the keyboard owns stdin
