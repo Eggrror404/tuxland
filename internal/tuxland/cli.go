@@ -28,6 +28,9 @@ func Usage(w io.Writer) {
   tuxland -level 3   skip the menu and start at level 3 (also the rehearsal path)
   tuxland -list      list the levels and exit
 
+Level 3 needs `+"`bc`"+` (a calculator); the game says so and stops if it is
+missing. The ✦ habits toolbox wants `+"`man`"+`, but does without it.
+
 The menu also carries ✦ habits — the toolbox: man, Tab, ↑ and the keys that
 get you out. It has no number and no flag; it is picked from the menu.
 

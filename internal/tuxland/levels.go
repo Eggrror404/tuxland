@@ -29,6 +29,7 @@ type level struct {
 	lead     string   // banner's one-liner
 	cmds     []string // --list / kickoff: the command family
 	used     []string // level-complete summary
+	needs    []string // programs this level types at: without one it cannot be played
 	seed     []plant  // the playground, scaffolded fresh every run
 	sections []section
 }
@@ -486,6 +487,11 @@ var level3 = &level{
 	lead: "a command does not just print — it hands its output on. here is every way to hand it somewhere.",
 	cmds: []string{"echo", ">", ">>", "<", "|", "tee", "bc"},
 	used: []string{"echo", "cat", ">", ">>", "<", "|", "tee", "bc"},
+	// The game's one program beyond a base system: `bc < problems.txt` and
+	// `echo "2 + 3" | bc` are the cards that teach `<` and `|`, and there is no
+	// rewording that teaches them without a calculator. So it is checked, not
+	// hoped for — see game.noTools.
+	needs: []string{"bc"},
 	seed: []plant{
 		{at: "today.txt", text: todayList},
 		{at: "later.txt", text: laterList},

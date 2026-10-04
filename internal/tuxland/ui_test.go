@@ -3,6 +3,7 @@ package tuxland
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -53,6 +54,10 @@ func everyScreen() []screen {
 			screen{"banner " + lv.name, func(g *game) { g.banner(lv) }},
 			screen{"level complete " + lv.name, func(g *game) { g.levelComplete(lv) }},
 		)
+		if len(lv.needs) > 0 {
+			screens = append(screens,
+				screen{"no tools " + lv.name, func(g *game) { g.noTools(lv, lv.needs) }})
+		}
 		for _, sec := range lv.sections {
 			sec := sec
 			screens = append(screens, screen{
@@ -529,6 +534,35 @@ func TestTwoWarningsInOneBeatMakeTwoLines(t *testing.T) {
 		if !strings.HasPrefix(line, "  ") {
 			t.Errorf("warning line %d does not start in the margin: %q", i+1, line)
 		}
+	}
+}
+
+// TestALevelSaysWhatItNeeds: a level that types at a program outside a base
+// system has to declare it, because the game refuses to start without one — and
+// the declaration is one of the level's own advertised commands, so `-list` shows
+// the dependency before anybody runs into it.
+func TestALevelSaysWhatItNeeds(t *testing.T) {
+	if got, want := level3.needs, []string{"bc"}; !slices.Equal(got, want) {
+		t.Errorf("level 3 needs %v, want %v — it is the level that types `bc < problems.txt`", got, want)
+	}
+	for _, lv := range levels {
+		for _, prog := range lv.needs {
+			if !slices.Contains(lv.cmds, prog) {
+				t.Errorf("level %d needs %s but never names it in cmds %v", lv.num, prog, lv.cmds)
+			}
+		}
+	}
+}
+
+// TestMissingToolsNamesWhatItCannotFind is the check itself: a program that is
+// there is not reported, one that is not is named, and a level that needs nothing
+// is never refused.
+func TestMissingToolsNamesWhatItCannotFind(t *testing.T) {
+	if got := missingTools(nil); len(got) != 0 {
+		t.Errorf("a level with no needs reported %v", got)
+	}
+	if got := missingTools([]string{"sh", "tuxland-no-such-program"}); !slices.Equal(got, []string{"tuxland-no-such-program"}) {
+		t.Errorf("missingTools reported %v, want just the one that is not installed", got)
 	}
 }
 

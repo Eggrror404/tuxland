@@ -585,6 +585,14 @@ one per line) and `about.txt`.
   - **The honesty constraint:** GNU `bc` *does* accept a file operand, so
     `bc problems.txt` prints the same four answers and there is no contrast to show. The
     cards therefore never claim `<` changes the output — they claim what `<` is *for*.
+  - **So the level declares it, and the game refuses the level without it.** No card of L3
+    can be passed without `bc` — not with `printf`, not with any hint — so a machine
+    without it used to reach a hint ladder with no way down, which is the one thing the
+    escape line exists to prevent and cannot fix. `level.needs` is checked before the
+    playground is scaffolded: the game names the program, says plainly that nothing was
+    changed, and gives the install command. A level's `needs` are part of the content, not
+    an afterthought in the runtime, so the check is one `exec.LookPath` per program and the
+    whole cost of being wrong is a level that says why it cannot run.
 - **`tee` is introduced *with* the pipe.** It had been put in L4 on the reasoning that it
   is a tool that consumes a construct, but its whole lesson is one visible difference —
   `>` leaves the screen empty and `tee` does not — and `echo "all done" | tee done.txt`
@@ -830,6 +838,8 @@ anyone remembering:
 | every numbered level ends in exactly one hunt, and no two share a token | `TestEveryLevelEndsInItsOwnHunt` |
 | the numbered levels are 1..N; the toolbox is last, `num 0`, extra, never "the last level" | `TestLevelNumbers` |
 | a file is never planted inside a folder that was already planted without owner `x` | `TestAPlantInsideASealedFolderComesFirst` |
+| a level that borrows a program declares it, and declares it as one of its own advertised commands | `TestALevelSaysWhatItNeeds` |
+| the preflight check names what it cannot find, and nothing when there is nothing to find | `TestMissingToolsNamesWhatItCannotFind` |
 
 **Why the fixture counts are gone.** They used to sit here — `today.txt` has three lines,
 `urls.txt` has five distinct paths with no adjacent repeats, the hunt's script is fifty
@@ -867,7 +877,8 @@ judgement calls, recorded in §1 and §7, and a test can only ever hold them aga
 **`bc` has no test of its own**, because it is a runtime dependency: what it answers is
 `bc`'s business, not the game's, and the replay runs the real thing anyway — so the level 3
 subtest *skips* where `bc` is absent rather than failing a suite that has nothing to say
-about it.
+about it. The game does not skip it: it refuses the level, which is a different question
+and has its own answer (§7, L3).
 
 ### The layout, on the buffer
 

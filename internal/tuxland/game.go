@@ -3,6 +3,7 @@ package tuxland
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -89,6 +90,14 @@ func play(u *ui, start int) {
 // steps, then the "press Enter for the next level" break. It reports whether
 // the run should carry on.
 func (g *game) runLevel(lv *level) bool {
+	// A level whose cards type at a program this machine does not have is turned
+	// away here, before anything is scaffolded: no card of it can be passed, so
+	// the only alternative is a run that stalls on a hint ladder with no way
+	// down. Saying so once, up front, is the honest version of that.
+	if missing := missingTools(lv.needs); len(missing) > 0 {
+		g.noTools(lv, missing)
+		return false
+	}
 	dir, err := scaffoldLevel(lv)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -188,6 +197,43 @@ func (g *game) warn(prefix, hint string) {
 	u := g.ui
 	first := "  " + u.col(ansiYellow, "⚠") + " "
 	u.proseWith(first, hangFor(first), span{prefix, ansiDim}, span{" — " + hint, ""})
+}
+
+// noTools is the game turning a level away: a program it needs is not installed.
+// It names the program, says plainly that nothing was changed, and gives the one
+// command to run — a workshop machine with no calculator should be told where to
+// get one, not left staring at a card it cannot pass.
+func (g *game) noTools(lv *level, missing []string) {
+	u := g.ui
+	head := "  " + u.col(ansiBold+ansiYellow, "⛔") + " "
+	u.lines("")
+	u.proseWith(head, hangFor(head), span{fmt.Sprintf("level %d cannot run here: this machine has no %s",
+		lv.num, strings.Join(missing, " and no ")), ansiBold + ansiYellow})
+	u.dimline("a level whose commands are missing has no step you could pass, so the game stops " +
+		"here instead of stalling on the card. nothing has been changed.")
+	u.prose("  ", "  ", "install "+strings.Join(missing, " and ")+", then start the level again:")
+	for _, prog := range missing {
+		for _, row := range [][2]string{
+			{"Debian, Ubuntu", "sudo apt install " + prog},
+			{"Fedora, RHEL", "sudo dnf install " + prog},
+			{"Arch", "sudo pacman -S " + prog},
+			{"macOS", "brew install " + prog},
+		} {
+			u.proseWith("      ", "      ", span{pad(row[0], 15), ansiDim}, span{"`" + row[1] + "`", ""})
+		}
+	}
+	u.lines("")
+}
+
+// missingTools are the programs a level needs that this machine does not have.
+func missingTools(progs []string) []string {
+	var missing []string
+	for _, prog := range progs {
+		if _, err := exec.LookPath(prog); err != nil {
+			missing = append(missing, prog)
+		}
+	}
+	return missing
 }
 
 func (g *game) cheer(s *step) {

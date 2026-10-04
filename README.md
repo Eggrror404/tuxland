@@ -37,7 +37,9 @@ being bash — tab-completion, arrow keys, `Ctrl-C`, colours, all of it.
 ## Where to run it
 
 **Anywhere with a shell** — Linux, macOS, a remote ssh session, a container. The only
-hard requirement is a `bash` on your `PATH`.
+hard requirement is a `bash` on your `PATH`; the rest of the game runs on coreutils.
+Level 3 borrows one program that is not part of a base system, **`bc`**, and the game
+checks for it and says so rather than starting a level it cannot finish.
 
 ```sh
 go install github.com/Eggrror404/tuxland@latest
@@ -105,8 +107,12 @@ system changes, no shell history files. Bash mistakes here cost nothing.
 - **Needs:** a `bash` on the player's `PATH` (the game spawns `bash --norc
   --noprofile -i`; it fails with a clear message if bash is missing). Beyond the
   base system: **`bc`**, because level 3 feeds a calculator to teach `<` and `|`
-  and there is no way to reword that beat without a second tool — a level-3 run
-  on a machine without it stalls at the card that asks for it. **`man`**, for the
+  and there is no way to reword that beat without a second tool. So it is a hard
+  dependency of that one level and nothing else: the game looks for `bc` before
+  it scaffolds anything and stops with the install command rather than stalling
+  at a card that cannot be passed — `-level 3` on a machine without it prints
+  that message and changes nothing. **`man`**, for the unnumbered habits toolbox;
+  a missing `man` costs one optional card, not a level.
   unnumbered habits toolbox; a missing `man` costs one optional card, not a level.
   Nothing is installed and nothing is fetched: no root, no packages, no network.
   If an ssh session dies mid-level the game exits on its own and leaves no shell
