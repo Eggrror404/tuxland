@@ -253,9 +253,16 @@ func (s *session) watchWinsize() {
 	}
 }
 
+// winsize is the size of the pty bash runs in, and it has to be the size the game
+// draws to — or bash wraps its own output at a different column than the game lays
+// its cards out to, and the two disagree in front of the student. The game draws to
+// stdout, so stdout decides; stdin is the same terminal in every ordinary run and
+// only stands in for a stdout that cannot be asked (a pipe, a test).
 func winsize() *pty.Winsize {
-	if w, h, err := term.GetSize(int(os.Stdin.Fd())); err == nil && w > 0 && h > 0 {
-		return &pty.Winsize{Cols: uint16(w), Rows: uint16(h)}
+	for _, f := range []*os.File{os.Stdout, os.Stdin} {
+		if w, h, err := term.GetSize(int(f.Fd())); err == nil && w > 0 && h > 0 {
+			return &pty.Winsize{Cols: uint16(w), Rows: uint16(h)}
+		}
 	}
 	return &pty.Winsize{Cols: 80, Rows: 24}
 }
