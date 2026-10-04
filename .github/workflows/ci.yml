@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
 
 permissions:
@@ -19,9 +19,9 @@ jobs:
           go-version-file: go.mod
 
       # `bc` because level 3 feeds a calculator to teach `<` and `|`, and `man`
-      # for the habits toolbox. Both are documented requirements in README.md —
-      # a level-3 run without `bc` stalls at the card that asks for it, so the
-      # session tests need them present to mean anything.
+      # for the habits toolbox. Both are documented requirements in README.md.
+      # Level 3 refuses to run without `bc`, so without it here that test would
+      # skip on a refusal instead of playing the level.
       - name: Install the tools the game shells out to
         run: sudo apt-get update && sudo apt-get install -y bc man-db
 
