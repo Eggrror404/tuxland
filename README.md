@@ -103,8 +103,10 @@ system changes, no shell history files. Bash mistakes here cost nothing.
   prints every level and every card in order — goal, note, hint ladder, ✅ line and
   what it plants — which is the whole game as text. It skips without `DUMP`.
 - **No dead air:** the game answers your Enter when bash's prompt says it is done, not
-  on a timer, and a slow command is still answered *below* its output. `DESIGN.md` §3
-  has the measurement and the two earlier guesses it replaced.
+  on a timer, and a slow command is still answered *below* its output. The one thing it
+  asks the terminal instead of guessing: whether bash still owns it, which is how the
+  50-second nudge knows to leave you alone while you are in a pager. `DESIGN.md` §3
+  has the measurement and the earlier guesses it replaced.
 - **Needs:** a `bash` on the player's `PATH` (the game spawns `bash --norc
   --noprofile -i`; it fails with a clear message if bash is missing). Beyond the
   base system: **`bc`**, because level 3 feeds a calculator to teach `<` and `|`
@@ -114,7 +116,6 @@ system changes, no shell history files. Bash mistakes here cost nothing.
   at a card that cannot be passed — `-level 3` on a machine without it prints
   that message and changes nothing. **`man`**, for the unnumbered habits toolbox;
   a missing `man` costs one optional card, not a level.
-  unnumbered habits toolbox; a missing `man` costs one optional card, not a level.
   Nothing is installed and nothing is fetched: no root, no packages, no network.
   If an ssh session dies mid-level the game exits on its own and leaves no shell
   behind.

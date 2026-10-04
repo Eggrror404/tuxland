@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
@@ -47,8 +48,7 @@ type session struct {
 	tail  []byte // trailing bytes, so a token split across two reads still matches
 	head  []byte // trailing bytes that could still become a prompt marker
 
-	lastOut atomic.Int64 // UnixNano of the last byte bash printed
-	started atomic.Bool  // has bash printed a prompt yet?
+	started atomic.Bool // has bash printed a prompt yet?
 
 	readyOnce sync.Once
 	closeOnce sync.Once
@@ -141,10 +141,6 @@ func (s *session) relayOutput(u *ui) {
 			if idle {
 				s.readyOnce.Do(func() { close(s.ready) })
 			}
-			if len(out) > 0 || idle {
-				// a bare prompt counts as bash talking too, for the quiet gap
-				s.lastOut.Store(time.Now().UnixNano())
-			}
 			if len(out) > 0 {
 				u.write(string(out))
 				s.scanFlag(out)
@@ -212,9 +208,21 @@ func (s *session) keys(b []byte) {
 // Ctrl-C they pressed on their own.
 func (s *session) promptSeen() bool { return s.started.Swap(true) }
 
-// lastOutput is when bash last printed something — the game uses it to stay
-// quiet until bash has finished answering.
-func (s *session) lastOutput() time.Time { return time.Unix(0, s.lastOut.Load()) }
+// atItsOwnPrompt reports whether bash is the foreground process of the terminal,
+// which is the only state in which the game may draw a prompt and expect to be
+// typed at: a child holding it (`man`, `less`, `cat`, `sleep 60`) means anything
+// the game draws lands on top of that child's program.
+//
+// An interactive bash has job control on, so it hands the terminal to each job's
+// process group and takes it back when the job ends — the foreground group is
+// bash's own pid exactly when bash is the one reading.
+func (s *session) atItsOwnPrompt() bool {
+	if s.cmd == nil || s.cmd.Process == nil || s.ptmx == nil {
+		return false
+	}
+	fg, err := unix.IoctlGetInt(int(s.ptmx.Fd()), unix.TIOCGPGRP)
+	return err == nil && fg == s.cmd.Process.Pid
+}
 
 func (s *session) arm(token string) {
 	s.mu.Lock()

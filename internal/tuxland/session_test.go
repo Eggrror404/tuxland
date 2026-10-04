@@ -2,12 +2,19 @@ package tuxland
 
 import (
 	"bytes"
+	"io"
+	"os/exec"
+	"runtime"
 	"testing"
+	"time"
 )
 
-// session_test.go covers the prompt marker, which is the shell's own "you may answer
-// now" and the one fact the game never guesses about. It is byte logic, so it is
-// tested as byte logic rather than left to a 50-second wait on a pty.
+// session_test.go covers the two pieces of session.go that decide *when the game
+// may speak*: the prompt marker, which is the shell's own "you may answer now",
+// and the foreground process, which says whether bash is the one holding the
+// terminal. Both are checked here at the cheap layer — byte logic, and one real
+// bash — rather than left to a 50-second wait on a pty.
+
 // TestAMarkerSplitAcrossTwoReadsIsStillHeard: a read from a pty ends wherever it
 // ends, so the three-byte marker can be cut in half, and a dropped marker leaves
 // that beat unanswered — no ✅, no prompt, and half an invisible character in the
@@ -58,5 +65,57 @@ func TestAChunkThatEndsInOrdinaryTextIsNeverHeldBack(t *testing.T) {
 	}
 	if out, _ := (&session{}).takeMarker([]byte("\xe2\x81")); len(out) != 0 {
 		t.Errorf("a possible marker prefix was written instead of held: %q", out)
+	}
+}
+
+// TestTheGameCanAskWhetherBashStillOwnsTheTerminal: the question the nudge asks
+// before it speaks, and it has to be right in both directions. A student stuck at
+// a prompt has to be nudged; a student reading `man ls` has to be left alone, and
+// from inside the game the two look the same — no output, no Enter, no marker.
+func TestTheGameCanAskWhetherBashStillOwnsTheTerminal(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("the foreground process group is read from the pty: Linux only")
+	}
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("no bash on PATH")
+	}
+	s, err := newSession(t.TempDir(), newUI(io.Discard))
+	if err != nil {
+		t.Fatalf("newSession: %v", err)
+	}
+	defer s.close()
+	if !s.atItsOwnPrompt() {
+		t.Fatal("bash should own the terminal when it is waiting for input")
+	}
+
+	// A child takes the terminal, and the question has to change answer while it
+	// runs: this is the `man ls` / `sleep 60` / `cat` case the nudge must not
+	// interrupt.
+	s.keys([]byte("sleep 5\n"))
+	gone := false
+	for until := time.Now().Add(3 * time.Second); time.Now().Before(until); {
+		if !s.atItsOwnPrompt() {
+			gone = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !gone {
+		t.Fatal("a running command should own the terminal, not bash")
+	}
+
+	// And bash takes it back, or the nudge would stay silent for the rest of the
+	// level after one Ctrl-C.
+	s.keys([]byte{0x03})
+	back := false
+	for until := time.Now().Add(3 * time.Second); time.Now().Before(until); {
+		if s.atItsOwnPrompt() {
+			back = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !back {
+		t.Error("bash did not take the terminal back after Ctrl-C")
 	}
 }

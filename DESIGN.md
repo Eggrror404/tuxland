@@ -94,7 +94,7 @@ so a level never feels crowded). Two step kinds plus the finale:
 | Step kind | What happens | How the game checks it |
 |---|---|---|
 | `info` | "Run this, look at the output" (`pwd`, `ls -l`, `man`, `echo $PATH`, …). The game prints a command box; the student runs it in bash and presses Enter to continue. | no check — waits for Enter |
-| `task` | "Make this state happen" (`touch`, `mkdir`, `mv`, `cp`, `echo >`, `chmod`, …). | **artifact check** against the real FS (exists / isDir / contents / mode), after each submitted line and on a slow idle poll. Pass → auto-advance "✅". Fail → keep waiting, auto-hint after a couple of misses, gentle time-based nudges if the student freezes. |
+| `task` | "Make this state happen" (`touch`, `mkdir`, `mv`, `cp`, `echo >`, `chmod`, …). | **artifact check** against the real FS (exists / isDir / contents / mode), after each bash prompt and once a second while a task's command is still running. Pass → auto-advance "✅". Fail → keep waiting, auto-hint after a couple of misses, gentle time-based nudges if the student freezes. |
 | `flag` (finale) | Riddle: find the magic token (`linuxlab-…`) hidden in the level, so that reaching it *requires* the level's commands. | see §4. |
 
 **Why not parse commands:** to keep tab-completion, arrows, history and colours
@@ -107,22 +107,53 @@ rendered by a real command.
 
 ## 3. Architecture (decided)
 
-- Go module under a thin CLI (§6). Deps: `github.com/creack/pty`, `golang.org/x/term`;
-  everything else stdlib. `go.mod` asks for the Go version `x/term` needs as its floor,
-  not whatever toolchain happens to be installed.
+- Go module under a thin CLI (§6). Deps: `github.com/creack/pty`, `golang.org/x/term`,
+  `golang.org/x/sys` (one ioctl, see the nudge below); everything else stdlib. `go.mod`
+  asks for the Go version `x/term` needs as its floor, not whatever toolchain happens to
+  be installed.
 - A real bash is spawned **inside a pseudo-terminal** (`--norc --noprofile -i`), with the
   level folder as its working directory and a plain custom `PS1`. Our stdin goes raw and
   every keystroke is forwarded to the pty verbatim, so Ctrl-C, arrows and tab reach bash
   untouched; pty output is relayed to the screen.
-- **The Enter boundary is bash's own prompt.** The game runs the current step's
-  verification when the relay sees the `PS1` marker — the shell saying it has nothing
-  left to say — with a slow idle ticker only as a backstop for a bash that will never
-  prompt again. The first build guessed with a settle delay plus a quiet gap, which put a
-  visible pause on every command and drew the game's line *above* output that had not
-  arrived yet; the signal was already being read and thrown away. Answering on the marker
-  costs nothing the student can see, for a silent command and a chatty one alike, and the
-  fallback is set far longer than any command the game asks a player to run so it can
-  only cost a late prompt, never a wrong screen.
+- **The Enter boundary is bash's own prompt, and nothing guesses.** The game runs the
+  current step's verification when the relay sees the `PS1` marker — the shell saying it
+  has nothing left to say. The first build guessed with a settle delay plus a quiet gap,
+  which put a visible pause on every command and drew the game's line *above* output that
+  had not arrived yet; the signal was already being read and thrown away. Answering on the
+  marker costs nothing the student can see, for a silent command and a chatty one alike.
+  - **The two fallback timers are gone, and silence is the reason.** They existed for a
+    bash that will never prompt again, and they guessed "finished" out of quiet. But quiet
+    is not evidence: `sleep 60` is quiet, so is a student reading `man ls`, and a timer
+    that cannot tell those from "done" answers a beat that is still running. Measured, the
+    guess was not a late prompt but a wrong screen — a prompt drawn into a busy terminal,
+    a task graded on the filesystem mid-command, and by the sixth attempt a spurious
+    "you deleted something, exit and restart". A guess here costs more than a late answer,
+    so nothing guesses: when bash will not prompt, the game waits for bash.
+  - **What is left is two timers, each safe by shape rather than by tuning.** `backstop`
+    re-reads the filesystem once a second while a task's command is still running, and
+    either advances the step in silence or says nothing — it never speaks, so it cannot be
+    wrong out loud. It exists for `mkdir done &`, where bash is back at its prompt before
+    the directory lands. The nudge speaks, so it asks the terminal first (§ below).
+  - **The one case the backstop cannot tell apart.** A foreground command that makes the
+    artifact *itself* — `sleep 60 && mkdir done` — passes the check while the command is
+    still on screen, so the card advances above a command that has not finished. This is
+    accepted, not fixed, because the ✅ is true and the alternative is worse: holding the
+    ✅ back would mean re-reporting a finished step later, after the student has moved on
+    to something else. It needs a command that both takes long enough to notice and lands
+    the artifact itself; the cards' own commands do not, and a student inventing one is
+    writing `sleep && mkdir`, which is the *one* shape where finishing early is what they
+    meant anyway. Gating the backstop on bash owning the terminal would not help — the
+    check has to be able to run while a command runs, that is its whole job.
+  - **The one thing the game does ask the kernel: is bash the foreground process?**
+    `session.atItsOwnPrompt` reads `TIOCGPGRP` off the pty and compares it with bash's own
+    pid — one ioctl, taken at the moment the answer is needed, not polled. An interactive
+    bash has job control on, so it hands the terminal to each job's process group and takes
+    it back when the job ends; the foreground group is bash itself exactly when bash is the
+    one reading. This is what a student reading a pager and a student frozen at a prompt
+    look like from inside the game — no output, no Enter, no marker — and only the terminal
+    can tell them apart. Known limit: a student who has turned job control off (`set +m`)
+    defeats it, which is a thing no beginner types, and the game's answer then degrades to
+    the old behaviour rather than to something worse.
 - **`PS1` is a single invisible marker and the game draws `tuxland$ ` itself**, at the end
   of every block that precedes typing — including after a command the game has nothing to
   say about. A real `PS1` collides with the ✅ line and risks injecting a newline into a
@@ -180,7 +211,8 @@ rendered by a real command.
   back a terminal it no longer owns.
 - **Hints:** automatic — no `next`/`hint` keywords. The first failed check prints
   nothing (bash's own error already told them); hints start on the second or third. A
-  time-based nudge rescues a student who has frozen without typing at all.
+  time-based nudge rescues a student who has frozen at the prompt without typing at all —
+  and only there, since a child holding the terminal means they are reading, not stuck.
 - **Escape line: after 6 submitted lines on one card, once**, the game names the only
   universal exit — `exit` and start the level again, because the playground is wiped and
   rebuilt. It exists because watching only the disk makes the game trustworthy *and*
@@ -245,7 +277,9 @@ rendered by a real command.
   student had just learned the level's commands and was being told which one to pick.
   This is a line the *writing* has to hold rather than a test (§8).
 - A flag step has no `check` (nothing to grade — the token is caught on screen), so its
-  hints arrive on the **time-based nudge** instead of a miss, every 50 s. That is what
+  hints arrive on the **time-based nudge** instead of a miss, every 50 s — and only while
+  bash owns the terminal, so a student who went off to read something is left reading.
+  That is what
   makes the ladder worth keeping: the answer is two minutes away, and a student who was
   going to find it never waits for it.
 - No hint and no note ever contains the token value.
@@ -914,12 +948,15 @@ none):
 
 ### When the game may speak
 
-The marker is byte logic, so it is checked as byte logic, not through a pty wait.
+Both of these were guesses before, and both are checked at the cheap layer rather than
+through a 50-second pty wait: the marker is byte logic, the foreground process is one
+real bash and one real command.
 
 | invariant | test |
 |---|---|
 | a prompt marker cut in half by a read is still heard exactly once, and never reaches the screen | `TestAMarkerSplitAcrossTwoReadsIsStillHeard` |
 | only a real marker prefix is held for the next read — ordinary output is never delayed | `TestAChunkThatEndsInOrdinaryTextIsNeverHeldBack` |
+| the game can tell a student stuck at a prompt from a student in `man ls`, and it changes its mind back when the pager is left | `TestTheGameCanAskWhetherBashStillOwnsTheTerminal` |
 
 ### The playground root
 
@@ -989,6 +1026,7 @@ the right thing one layer below the truth.
 
 ## 10. Known hazards, accepted
 
-- A nudge or ✅ printed while the student is mid-line leaves their text above it. Nudges are
-  rare and the check only fires after a submitted line, so this is left alone.
+- A nudge or ✅ printed while the student is mid-line leaves their text above it. The nudge
+  waits for the terminal to belong to bash and the check only fires after a submitted line,
+  so both are left alone.
 - L4 is long (§7). Accepted rather than split, because splitting renumbers the deck.

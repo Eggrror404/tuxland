@@ -8,20 +8,18 @@ import (
 	"time"
 )
 
-// The supervision loop's timing. The normal path is not a timer at all — it is
-// bash's own prompt (evIdle in session.go), so a student's Enter is answered as
-// fast as the shell can turn around, and never into the middle of its output.
+// The supervision loop's timing. A beat is answered on bash's own prompt
+// (evIdle in session.go), so an Enter is answered as fast as the shell turns
+// around, and never into the middle of its output.
 //
-// The two waits below are the fallback for the one case that signal cannot cover:
-// a bash that will never prompt again. They are guesses, and a guess here is
-// expensive, because a merely slow command is not finished just because it has
-// been quiet a moment. So both sit far longer than anything the game asks a
-// player to run takes, and a fallback that fires anyway costs a late prompt, never a wrong
-// screen. The measurement, and the two guesses it replaced: DESIGN.md §3.
+// The two timers below are the only ones, and neither may guess that a command
+// has finished: `backstop` re-reads the filesystem and either advances a step in
+// silence or says nothing, and the nudge speaks only once the terminal says bash
+// is the one holding it. No other timer is needed, because bash's prompt is the
+// fact; a fixed wait cannot tell a slow command from a finished one. The
+// measurement behind that: DESIGN.md §3.
 const (
-	quietGap   = 2 * time.Second // no prompt, and this long silent: call it done
-	hardCap    = 4 * time.Second // ...or this long since the Enter, whatever it prints
-	backstop   = time.Second     // slow commands: check anyway
+	backstop   = time.Second // async work: check the artifact anyway, silently
 	tickRate   = 25 * time.Millisecond
 	hintAfter  = 2                       // the first failed try gets silence
 	stuckAfter = 6                       // this many attempts in: name the way out
@@ -499,12 +497,10 @@ func (g *game) supervise(st *stepState) bool {
 	defer tick.Stop()
 
 	pending := nothing
-	var at time.Time // when the line was submitted, for the fallback's hard cap
 
 	// answer is what the game does with a submitted line once bash has finished
 	// with it. The ✅ has to land *below* the command's output, not on top of it,
-	// and both callers — the prompt marker and the fallback below — are after
-	// every byte of that output.
+	// and the prompt marker is after every byte of that output.
 	answer := func() bool {
 		switch pending {
 		case nothing:
@@ -563,7 +559,6 @@ func (g *game) supervise(st *stepState) bool {
 			case evEnter:
 				st.tried = true
 				st.presses++
-				at = time.Now()
 				switch {
 				case st.step.kind == kindInfo && (st.presses > 1 || st.step.noCmd):
 					// The first Enter ran the command; this one is the "I've
@@ -581,25 +576,20 @@ func (g *game) supervise(st *stepState) bool {
 			if !g.eof.IsZero() && now.Sub(g.eof) > eofGrace {
 				return false
 			}
-			// The fallback, for a bash that will never print its prompt: the
-			// prompt was taken away, or a child hangs without a word. Wait for
-			// real silence rather than assume, so a merely slow command is
-			// never talked over — its marker is on its way.
-			if pending != nothing &&
-				(now.Sub(sess.lastOutput()) >= quietGap || now.Sub(at) >= hardCap) {
-				if answer() {
-					return true
-				}
-			}
-			// Backstop: a task whose command is still running, checked anyway.
+			// Backstop: a task that might be done already, even though bash has
+			// not come back to say so — `mkdir done &` puts the work behind
+			// the prompt. Only `driven` speaks, so a check from here advances a
+			// finished step and says nothing at all otherwise.
 			if st.tried && st.step.kind == kindTask && now.Sub(st.lastCheck) >= backstop {
 				if done, _ := g.tryTask(st, false); done {
 					return true
 				}
 			}
 			// Nobody has typed anything for a while: a gentle nudge, with the
-			// goal restated so nobody has to scroll back.
-			if st.tried && now.Sub(st.since) >= nudgeEvery {
+			// goal restated so nobody has to scroll back. Only while bash owns
+			// the terminal, so a student reading `man ls` or sitting in `less`
+			// is left to it.
+			if st.tried && now.Sub(st.since) >= nudgeEvery && sess.atItsOwnPrompt() {
 				phrase := nudgePhrases[st.nudged%len(nudgePhrases)]
 				st.nudged++
 				g.warn(phrase, st.step.goal)
