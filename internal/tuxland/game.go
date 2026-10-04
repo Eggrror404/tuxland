@@ -12,11 +12,13 @@ import (
 // (evIdle in session.go), so an Enter is answered as fast as the shell turns
 // around, and never into the middle of its output.
 //
-// The two timers below are the only ones, and neither may guess that a command
-// has finished: `backstop` re-reads the filesystem and either advances a step in
-// silence or says nothing, and the nudge speaks only once the terminal says bash
-// is the one holding it. No other timer is needed, because bash's prompt is the
-// fact; a fixed wait cannot tell a slow command from a finished one. The
+// Of the durations below, only two could otherwise race a command's end, and
+// neither may guess that one has finished: `backstop` re-reads the filesystem and
+// either advances a step in silence or says nothing, and the nudge speaks only
+// once the terminal says bash is the one holding it. Neither is needed, because
+// bash's prompt is the fact; a fixed wait cannot tell a slow command from a
+// finished one. The rest are the loop's own clock (`tickRate`) and the two
+// scripted-run pauses (`eofGrace`, `breakPause`), which answer to nobody. The
 // measurement behind that: DESIGN.md §3.
 const (
 	backstop   = time.Second // async work: check the artifact anyway, silently

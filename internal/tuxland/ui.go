@@ -12,8 +12,10 @@ import (
 	"golang.org/x/term"
 )
 
-// ANSI attributes. Colors are only emitted when our stdout is a terminal, so
-// piped / scripted runs (the smoke tests) stay clean plain text.
+// ANSI attributes, emitted only when our stdout is a terminal: the game adds no
+// escape of its own to a pipe, so a scripted run reads as plain text. (bash's own
+// sequences still come through the pty relay — bracketed paste among them — which
+// is why the screen model, not a byte comparison, is what the tests read.)
 const (
 	ansiReset  = "\x1b[0m"
 	ansiBold   = "\x1b[1m"
