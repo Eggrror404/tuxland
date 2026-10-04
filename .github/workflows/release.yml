@@ -37,9 +37,13 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
+          TAG: ${{ github.ref_name }}
         run: |
           out="tuxland-${{ matrix.goos }}-${{ matrix.goarch }}"
-          go build -trimpath -ldflags '-s -w' -o "$out" .
+          # Stamp the tag into the binary, so `tuxland -v` on a workshop laptop
+          # says which release it is. -trimpath keeps the build machine out of it.
+          version="${TAG#v}"
+          go build -trimpath -ldflags "-s -w -X github.com/Eggrror404/tuxland/internal/tuxland.version=$version" -o "$out" .
           sha256sum "$out" > "$out.sha256"
 
       - uses: actions/upload-artifact@v4

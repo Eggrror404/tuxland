@@ -52,6 +52,7 @@ nothing to install. Either way, put it on your `PATH` and:
 tuxland            # the menu: pick a level, then play it
 tuxland -level 3   # skip the menu, start straight at level 3 (also how you redo one)
 tuxland -list      # what the levels are, without playing
+tuxland -v         # which version this is
 ```
 
 **Windows:** use WSL — [install WSL](https://learn.microsoft.com/windows/wsl/install)

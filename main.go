@@ -23,6 +23,10 @@ import (
 func main() {
 	level := flag.Int("level", 0, fmt.Sprintf("start straight at level N (1-%d)", tuxland.NumLevels()))
 	list := flag.Bool("list", false, "list the levels and exit")
+	// -v and -version are the same flag: one is what people try, the other is
+	// what they try after the first one printed a usage error.
+	showVersion := flag.Bool("v", false, "print the version and exit")
+	flag.BoolVar(showVersion, "version", false, "print the version and exit")
 	flag.Usage = func() { tuxland.Usage(flag.CommandLine.Output()) }
 	flag.Parse()
 
@@ -36,6 +40,8 @@ func main() {
 	}()
 
 	switch {
+	case *showVersion:
+		tuxland.Version(os.Stdout)
 	case *list:
 		tuxland.List(os.Stdout)
 	case *level < 0 || *level > tuxland.NumLevels():

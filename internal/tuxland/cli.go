@@ -13,6 +13,19 @@ import (
 // number, and `-level` cannot reach it.
 func NumLevels() int { return len(numberedLevels()) }
 
+// version is what `tuxland -v` reports. It is a var so a release build can stamp
+// itself from its tag — the release workflow passes
+// -X github.com/Eggrror404/tuxland/internal/tuxland.version=1.0.0 — and a
+// downloaded binary then says which one it is. Built from a checkout it says
+// `1.0.0-dev`, which is what it is.
+var version = "1.0.0-dev"
+
+// Version prints the version and stops. One line, no banner: it is what a bug
+// report starts with.
+func Version(w io.Writer) {
+	fmt.Fprintf(w, "tuxland %s · %d levels, plus the ✦ habits toolbox\n", version, NumLevels())
+}
+
 // List prints the level table plus the play instructions, and stops.
 func List(w io.Writer) { newUI(w).list(loadProgress()) }
 
@@ -27,6 +40,7 @@ func Usage(w io.Writer) {
   tuxland            the menu: pick a level, then play it
   tuxland -level 3   skip the menu and start at level 3 (also the rehearsal path)
   tuxland -list      list the levels and exit
+  tuxland -v         print the version and exit
 
 Level 3 needs `+"`bc`"+` (a calculator); the game says so and stops if it is
 missing. The ✦ habits toolbox wants `+"`man`"+`, but does without it.
