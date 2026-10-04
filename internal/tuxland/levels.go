@@ -127,7 +127,7 @@ var level1 = &level{
 	used: []string{"pwd", "cd", "ls", "ls -a", "ls -l", "ls -la", "ls --help"},
 	// A couple of folders to walk between, a dot-file to explain `ls -a`, and
 	// nothing else: level 1 is pure navigation. The flag folder is planted when
-	// the hunt starts, so plain `ls` never shows it early.
+	// the hunt starts, and it starts with a dot, so plain `ls` never shows it.
 	seed: []plant{
 		{at: "readme.txt", text: "welcome to the lab playground.\nlook around — that is the whole first level.\n"},
 		{at: "notes/readme.txt", text: "a folder inside a folder: `cd notes` walks in.\n"},
@@ -376,7 +376,8 @@ var level2 = &level{
 				{
 					// Eight graded cards in a row was where this level lost people,
 					// and this is the natural seam: everything created so far is
-					// visible, and the next three cards delete. The habit this section
+					// visible, and the next three cards take it away again — one file
+					// made and thrown out, then a whole folder. The habit this section
 					// is about is *looking*, so looking is the beat.
 					kind: kindInfo,
 					goal: "look at everything you have made so far",
@@ -449,9 +450,10 @@ var level2 = &level{
 //
 // The ways text moves. Two of the four constructs are only demonstrable with
 // something on the receiving end, so this level borrows exactly one tool — `bc`,
-// the calculator — for `<` and `|`, and gets nothing else out of it. The level
-// stays flat with no folders: searching a tree needs a tree, and that is level
-// 4's whole subject.
+// the calculator — for `<` and `|`, and gets nothing else out of it. Nothing the
+// student types here has to walk into a folder: searching a tree needs a tree,
+// and that is level 4's whole subject. The one folder that exists arrives with
+// the hunt, so it can hold the word without anything earlier having to know it.
 //
 // `bc` earns the borrow because it is a *program*, and a program reads its input
 // rather than opening a file, which is the only honest reason to reach for `<`:
@@ -671,12 +673,14 @@ nothing here is precious. break it, delete it, make more.
 // Level 3 moved text around and could do nothing with it. This is the other
 // half: the commands that *read* text, which is what makes the pipe worth
 // having. They are all one idea — take text in, hand back a smaller answer —
-// and they only earn their keep at the end of a pipeline, which is why every
-// step here has a `|` in it somewhere.
+// and most of them only earn their keep at the end of a pipeline. The cards that
+// carry no `|` are the ones that earn it: run bare first, so the tool is met on
+// its own and then seen again doing the job the level is about.
 //
-// `cat` opens the level as a revisit on purpose: it is the one tool the student
-// has met twice already, and seeing it here with a job to do makes the shape of
-// the level obvious before the unfamiliar ones arrive.
+// `cat` opens the level as a revisit on purpose: it is the only tool on this
+// level's list the student has met before — in level 2 and again in level 3 — and
+// seeing it here with a job to do makes the shape of the level obvious before the
+// unfamiliar ones arrive.
 //
 // The tree is the point of the second half: `find` and `grep -R` have nothing
 // to do on one file. `today.log` has exactly 10 lines — 2 ERROR, 2 ×404,
@@ -1004,8 +1008,8 @@ a requester left a stowaway in here: linuxlab-s33rch
 //
 // Only `printf`, `sed`, `tr` and `wc` are used — the first is a shell builtin and
 // the rest are coreutils — so there is nothing here that a bare workstation could
-// be missing. It is also POSIX enough to run under `sh`, which is what the test
-// uses to check the output without depending on the execute bit.
+// be missing. It is also POSIX enough to run under `sh`, though the level's own
+// test drives it the way the student does: `chmod +x start`, then `./start`.
 const huntScript = `#!/bin/bash
 # nightly report for the lab folder
 
@@ -1567,7 +1571,7 @@ var level6 = &level{
 // Not a level: the habits toolbox. It has no number and no flag, and it never
 // runs as part of the sequence — the menu is the only way in, and finishing it
 // returns to the menu. It is the home of the small shell habits the tour leans
-// on, given a place to practise them without pretending to be a sixth family.
+// on, given a place to practise them without pretending to be a seventh family.
 
 var habitsLevel = &level{
 	num: 0, extra: true, name: "habits", emoji: "🧰",
