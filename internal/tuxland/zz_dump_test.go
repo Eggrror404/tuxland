@@ -28,6 +28,8 @@ func TestDumpLevels(t *testing.T) {
 		fmt.Printf("teaches: %s\n", strings.Join(lv.cmds, " "))
 		fmt.Printf("uses:    %s\n", strings.Join(lv.used, " "))
 		fmt.Printf("lead:    %s\n", lv.lead)
+		fmt.Printf("take away: %s\n", lv.learned)
+		fmt.Printf("try this:  %s\n", lv.extraTip)
 		fmt.Printf("%s\n", strings.Repeat("━", 78))
 
 		for si, sec := range lv.sections {

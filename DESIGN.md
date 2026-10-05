@@ -443,7 +443,14 @@ tuxland$ ls -a
 
 ```
   🎉 LEVEL 1 COMPLETE
+  take away: pwd tells you where you are, ls tells you what is here, and
+  cd .. walks back out — that trio is the shell's whole orientation routine,
+  and every later command is run from wherever those left you.
+  try this: ls -lt sorts by time, so the newest thing you made is on top. Add
+  -h for readable sizes.
   you just used: pwd · cd · ls · ls -a · ls -l · ls -la · ls --help
+  To play it again: tuxland -level 1 starts this level fresh — its folder is
+  wiped and rebuilt, and the other levels keep what they made.
   Press Enter for Level 2 (or Ctrl-D to stop here)
 …
   🎓 ALL SIX LEVELS DONE
@@ -452,6 +459,13 @@ tuxland$ ls -a
    • pwn.college         https://pwn.college/
   start at Bandit Level 0 — you're already ahead of it. 🐧
 ```
+
+`take away:` and `try this:` are per-level fields (`learned`, `extraTip`): what the level
+was *for*, and one variation worth knowing, in the order a list of commands cannot give
+them. They are **content**, so §8's "content quality is review, not test" is what governs
+them — `DUMP=1` prints them for a reviewer and no test judges the words. The replay line
+is not content: it is generated, and a play-test asked what a reset would preserve, which
+no screen had ever said.
 
 ## 6. Why the code is shaped this way
 
@@ -491,8 +505,9 @@ transcript.
 ### The level API — writing or editing a level
 
 A level is one struct literal: identity (`num`, `extra`, `name`, `emoji`, `title`,
-`tagline`, `lead`, `cmds`, `used`), the `seed` (what the playground holds when the level
-starts, replanted fresh every run), and `sections` → `steps`. Everything the game puts on
+`tagline`, `lead`, `cmds`, `used`), the closing recap (`learned`, `extraTip` — §5), the
+`seed` (what the playground holds when the level starts, replanted fresh every run), and
+`sections` → `steps`. Everything the game puts on
 disk, at scaffold time or later, is a `plant`: `at` (a playground-relative path), `dir`
 for a folder, `text` for a file, and `mode` when something grades permissions. A level
 with `extra: true` has `num: 0`, so it is not in the 1→6 sequence, a digit cannot reach
@@ -688,7 +703,7 @@ list and something to leave out.
   distinct paths, and **no two repeats sitting next to each other**. Tidy it into a block
   per path and `uniq` alone starts working, so the task stops needing the pipe and the
   lesson goes with it. Nothing enforces that shape, so this sentence is the thing that has
-  to survive an edit to the fixture.
+  to survive an edit to the fixture — it is content, so §8 puts it past a test on purpose.
 - **The dates inside the two `logs/2024/` logs are 2024**, matching the folder they sit
   in. They were 2025 at first, which would have taught the exact opposite of this level's
   subject on the one tree that carries the flag — nothing asserts it, so it is the
@@ -696,6 +711,14 @@ list and something to leave out.
 - `find` and `grep -R` are the two commands here the tour does *not* name — `find`
   because a single file needs no finding, `-R` because the tour's grep has one file in it.
   They earn their place by having a tree to work on.
+
+- **Why `sort | uniq`, said in the recap rather than only on a card.** §3 makes `uniq` fail
+  on purpose — it *visibly does nothing* — and then the task needs the pipe to pass. The
+  student who passes it has seen the reason, but nobody has named it. L4's `learned` line
+  now says it in one sentence: `uniq` drops only *neighbouring* repeats, which is why it
+  wants a `sort` in front of it. A play-test asked for exactly this ("explain why `uniq`
+  usually follows `sort`") and the answer belongs where the student is at the end of the
+  level rather than three cards back.
 
 **Known outlier, left alone on purpose:** fourteen cards and ten commands in one level.
 Splitting it into a seventh level would renumber the deck's `#gamelevel` labels, so that is
@@ -898,7 +921,7 @@ level, so a level added tomorrow is covered without anyone remembering. No test 
 | invariant | test |
 |---|---|
 | no step is already done when the student arrives (no free steps) | `TestNoTaskIsFree` |
-| a token never appears in a goal / note / hint / ✅ line | `TestTokensStayOutOfTheProse` |
+| a token never appears in a goal / note / hint / ✅ line, nor in the recap a level prints after its hunt | `TestTokensStayOutOfTheProse` |
 | every step has hints, a ✅ line, and a check or a token | `TestEveryStepIsComplete` |
 | every hunt's word is on the disk after its plant — or, where the level says `assembled`, deliberately not | `TestFlagsArePlanted` |
 | every numbered level ends in exactly one hunt, and no two share a token | `TestEveryLevelEndsInItsOwnHunt` |
@@ -911,8 +934,21 @@ level, so a level added tomorrow is covered without anyone remembering. No test 
 record what one author decided on one day and then fail the next person who reworded a card.
 That a hunt's script is hard to read rather than merely unreadable, that a hint ladder
 escalates, that a goal names its target — those are judgement calls, recorded in §1 and §7,
-and a test can only ever hold them against the *next* person's rewording. Two layers do the
-work instead, and both are in the suite:
+and a test can only ever hold them against the *next* person's rewording.
+
+**The line is drawn at semantics, not at strings.** The rule this repo keeps re-learning
+is that a test may check a *rule* that holds for any wording — the token never appears, the
+card fits the window, the check matches the goal's artifact — and may not check *whether the
+words are any good*. The first kind catches a real break and survives a rewrite. The second
+records one author's taste and then resents the next person's edit. A play-test asked for a
+recap at the end of every level, and the obvious "every level must have a non-empty recap,
+with balanced backticks, that does not merely repeat the level's name, and whose screen
+mentions `-level N`" was deleted on the grounds that six of its seven assertions were
+taste. What survived is in the table above: the recap must not leak the hunt's word. The
+recap's wording is a reviewer's read of `DUMP=1`, and §7 is where the intent is written down
+so a reviewer knows what to be looking for.
+
+Two layers do the rest of the work, and both are in the suite:
 
 - **`replay_test.go` plays each level**, typing real commands into a throwaway playground
   through the real binary on a real pty, and waits for the level's own completion banner.
@@ -953,6 +989,7 @@ none):
 | a wrap is greedy, breaks only on spaces, and hands back untouched slices | `TestWrapIsGreedyAndVerbatim` |
 | a wrapped hint keeps its voice — the command stays bold cyan across the break | `TestAWrappedHintKeepsItsVoice` |
 | no screen says different *words* with the colour on than with it off — colour is emphasis, never the only carrier of a meaning | `TestNoMeaningIsCarriedByColourAlone` |
+| `level complete` for every level, so the recap lines get the same width coverage as every other screen | `everyScreen` |
 | `NO_COLOR` (any value, the empty one included) turns every attribute off, at the one place colour is emitted | `TestNoColorEnvTurnsTheColourOff` |
 | a `` `command` `` moves down whole and stays styled; a flag stays with its command | `TestCodeSpansStayWholeAndStyled` |
 | a glob inside backticks keeps its star | `TestMarkupKeepsAGlobIntact` |

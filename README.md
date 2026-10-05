@@ -28,8 +28,9 @@ being bash — tab-completion, arrow keys, `Ctrl-C`, colours, all of it.
 - Every level ends with a **flag hunt**: a `linuxlab-…` word is hidden in the
   playground. Print it (`cat`, `grep`, a script of your own…) and the game catches it
   on screen. There is nothing to type back.
-- The **level summary** at the end lists the commands you just used — that's the
-  win, not a grade.
+- The **level summary** at the end says what the level was *for*, shows one variation worth
+  knowing (`ls -lt`, `cp -r`, `2>&1`), lists the commands you just used, and tells you what a
+  replay would wipe — that's the win, not a grade.
 - A level you finish is **remembered**: next time the menu ticks it ✅ and offers you
   the next one, so you can quit anywhere and pick up where you left off.
 - The menu's last row is **✦ habits** — an unnumbered toolbox of the small shell

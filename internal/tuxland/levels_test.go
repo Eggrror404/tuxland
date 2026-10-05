@@ -130,6 +130,21 @@ func TestTokensStayOutOfTheProse(t *testing.T) {
 			t.Errorf("level %d: the token leaks into the card %q", lv.num, st.goal)
 		}
 	})
+	// The same rule, extended to the recap that a level prints *after* its hunt:
+	// a take-away line quoting the word back would hand over the answer on the
+	// screen that follows the hunt. It is a rule about the token, so it holds for
+	// any wording — unlike "is this recap good", which is §8's reviewer's job.
+	for _, lv := range levels {
+		for _, s := range []string{lv.learned, lv.extraTip} {
+			for _, sec := range lv.sections {
+				for i := range sec.steps {
+					if tok := sec.steps[i].token; tok != "" && strings.Contains(s, tok) {
+						t.Errorf("level %d: the recap leaks the token %q", lv.num, tok)
+					}
+				}
+			}
+		}
+	}
 }
 
 // Hints and ✅ lines are automatic, so a step without them would leave the

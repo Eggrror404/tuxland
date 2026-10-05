@@ -29,6 +29,8 @@ type level struct {
 	lead     string   // banner's one-liner
 	cmds     []string // --list / kickoff: the command family
 	used     []string // level-complete summary
+	learned  string   // level-complete: the one thing to take away, in a sentence
+	extraTip string   // level-complete: one variation worth knowing, in a sentence
 	needs    []string // programs this level types at: without one it cannot be played
 	seed     []plant  // the playground, scaffolded fresh every run
 	sections []section
@@ -122,9 +124,11 @@ func extraLevel() *level { return levels[len(levels)-1] }
 var level1 = &level{
 	num: 1, name: "navigation", emoji: "🧭",
 	title: "WHERE AM I?", tagline: "where you stand",
-	lead: "every command happens somewhere — a real folder.",
-	cmds: []string{"pwd", "cd", "ls", "ls -a", "ls -l", "ls -la"},
-	used: []string{"pwd", "cd", "ls", "ls -a", "ls -l", "ls -la", "ls --help"},
+	lead:     "every command happens somewhere — a real folder.",
+	cmds:     []string{"pwd", "cd", "ls", "ls -a", "ls -l", "ls -la"},
+	used:     []string{"pwd", "cd", "ls", "ls -a", "ls -l", "ls -la", "ls --help"},
+	learned:  "`pwd` tells you where you are, `ls` tells you what is here, and `cd ..` walks back out — that trio is the shell's whole orientation routine, and every later command is run from wherever those left you.",
+	extraTip: "`ls -lt` sorts by time, so the newest thing you made is on top. Add `-h` for readable sizes.",
 	// A couple of folders to walk between, a dot-file to explain `ls -a`, and
 	// nothing else: level 1 is pure navigation. The flag folder is planted when
 	// the hunt starts, and it starts with a dot, so plain `ls` never shows it.
@@ -268,9 +272,11 @@ var level1 = &level{
 var level2 = &level{
 	num: 2, name: "files", emoji: "📁",
 	title: "YOUR FIRST FILES", tagline: "make, keep, throw away",
-	lead: "files are the whole point of a computer.",
-	cmds: []string{"cat", "mkdir", "touch", "mv", "cp", "rm"},
-	used: []string{"cat", "mkdir", "touch", "mv", "cp", "rm", "rm -r"},
+	lead:     "files are the whole point of a computer.",
+	cmds:     []string{"cat", "mkdir", "touch", "mv", "cp", "rm"},
+	used:     []string{"cat", "mkdir", "touch", "mv", "cp", "rm", "rm -r"},
+	learned:  "you made, moved, copied and deleted files, and `rm` gave nothing back — which is why looking before you delete is the habit rather than a formality.",
+	extraTip: "`cp -r sourcedir/ targetdir/` copies a whole folder, contents and all.",
 	seed: []plant{
 		{at: "notes/todo.txt", text: "learn the moves:\n  cat  mkdir  touch  mv  cp  rm\n"},
 		{at: "notes/ideas.txt", text: "a log full of clues would make a good next level\nthe magic word is linuxlab-n0t3m4n\n"},
@@ -507,9 +513,11 @@ const problems = `2 + 3
 var level3 = &level{
 	num: 3, name: "text-io", emoji: "🔀",
 	title: "TEXT IN, TEXT OUT", tagline: "where the output goes",
-	lead: "a command does not just print — it hands its output on. here is every way to hand it somewhere.",
-	cmds: []string{"echo", ">", ">>", "<", "|", "tee", "bc"},
-	used: []string{"echo", "cat", ">", ">>", "<", "|", "tee", "bc"},
+	lead:     "a command does not just print — it hands its output on. here is every way to hand it somewhere.",
+	cmds:     []string{"echo", ">", ">>", "<", "|", "tee", "bc"},
+	used:     []string{"echo", "cat", ">", ">>", "<", "|", "tee", "bc"},
+	learned:  "a command's output can go to the screen, to a file, or into another command — and `>` wipes the destination while `>>` adds to it. `tee` is the one that does both at once.",
+	extraTip: "`command > file 2>&1` sends the errors into the file as well, so one file holds the whole story.",
 	// The game's one program beyond a base system: `bc < problems.txt` and
 	// `echo "2 + 3" | bc` are the cards that teach `<` and `|`, and there is no
 	// rewording that teaches them without a calculator. So it is checked, not
@@ -738,9 +746,11 @@ const urls = `/style.css
 var level4 = &level{
 	num: 4, name: "read-it", emoji: "🔍",
 	title: "READING WITH PIPES", tagline: "the tools at the end of a pipe",
-	lead: "level 3 moved text around. these are the commands that read it — and they only earn their keep at the end of a pipe.",
-	cmds: []string{"cat", "wc -l", "wc -w", "grep", "grep -c", "grep -l", "grep -R", "find", "sort", "uniq"},
-	used: []string{"cat", "wc -l", "wc -w", "grep", "grep -c", "grep -l", "grep -R", "find", "sort", "uniq", "|", ">"},
+	lead:     "level 3 moved text around. these are the commands that read it — and they only earn their keep at the end of a pipe.",
+	cmds:     []string{"cat", "wc -l", "wc -w", "grep", "grep -c", "grep -l", "grep -R", "find", "sort", "uniq"},
+	used:     []string{"cat", "wc -l", "wc -w", "grep", "grep -c", "grep -l", "grep -R", "find", "sort", "uniq", "|", ">"},
+	learned:  "`grep` narrows, `wc` counts, `find` locates — and `uniq` only drops *neighbouring* repeats, which is why it wants a `sort` in front of it. `grep` on its own shows you a result; add `| tee file` and you have kept one too.",
+	extraTip: "`grep -c` counts the matches instead of printing them, which is the flag to reach for when you only want the number.",
 	seed: []plant{
 		{at: "today.log", text: todayLog},
 		{at: "urls.txt", text: urls},
@@ -1157,9 +1167,11 @@ printf 'signature: %s\n' "$sig"
 var level5 = &level{
 	num: 5, name: "executables", emoji: "🛠️",
 	title: "YOUR FIRST SCRIPT", tagline: "your first script",
-	lead: "every command is just a file. here is one, already written — all it is missing is permission to run.",
-	cmds: []string{"cat", "chmod +x", "./", "PATH"},
-	used: []string{"cat", "chmod", "ls -l", "./", "echo", ">", "PATH"},
+	lead:     "every command is just a file. here is one, already written — all it is missing is permission to run.",
+	cmds:     []string{"cat", "chmod +x", "./", "PATH"},
+	used:     []string{"cat", "chmod", "ls -l", "./", "echo", ">", "PATH"},
+	learned:  "`ls` is a file like any other, which is why `chmod +x` can make it a command. `./` says *this one, right here* — and a bare name only works for folders on `PATH`, which is why `hello` failed until you wrote `./hello`.",
+	extraTip: "naming the interpreter skips the execute bit entirely: `sh start` runs a script you have no permission to change.",
 	seed: []plant{
 		{at: "hello", text: "#!/bin/bash\necho \"hello from a file\"\n", mode: 0o644},
 		{at: "about.txt", text: `hello is a file. so is ls. so is everything you have typed today.
@@ -1322,9 +1334,11 @@ run one with ./hello once it has the execute bit set.
 var level6 = &level{
 	num: 6, name: "permissions", emoji: "🔐",
 	title: "LOCKS & KEYS", tagline: "locks & keys",
-	lead: "who may read, who may write, who may run — and who are you?",
-	cmds: []string{"chmod u/g/o ± rwx", "chmod 600/640/700", "ls -ld", "id"},
-	used: []string{"ls -l", "ls -ld", "cd", "cat", "id", "chmod"},
+	lead:     "who may read, who may write, who may run — and who are you?",
+	cmds:     []string{"chmod u/g/o ± rwx", "chmod 600/640/700", "ls -ld", "id"},
+	used:     []string{"ls -l", "ls -ld", "cd", "cat", "id", "chmod"},
+	learned:  "the nine letters in `-rwxr-xr-x` are three groups — you, your group, everyone else — and a *folder* needs the third letter to be walked through, not just listed. `id` is where your own user and group are named.",
+	extraTip: "`chmod o-w file` takes a permission away from everyone else, which is the one to reach for when you only meant to add one.",
 	seed: []plant{
 		{at: "data.txt", text: "nothing to see here\n", mode: 0o644},
 		{at: "notes.txt", text: "a shared note\n", mode: 0o666},
@@ -1601,9 +1615,11 @@ var level6 = &level{
 var habitsLevel = &level{
 	num: 0, extra: true, name: "habits", emoji: "🧰",
 	title: "HABITS & THE MANUAL", tagline: "habits & the manual",
-	lead: "the small moves that make a shell feel like home.",
-	cmds: []string{"man", "--help", "Tab", "↑", "clear", "Ctrl-C", "Ctrl-D"},
-	used: []string{"man", "--help", "Tab", "↑", "clear", "Ctrl-C", "Ctrl-D"},
+	lead:     "the small moves that make a shell feel like home.",
+	cmds:     []string{"man", "--help", "Tab", "↑", "clear", "Ctrl-C", "Ctrl-D"},
+	used:     []string{"man", "--help", "Tab", "↑", "clear", "Ctrl-C", "Ctrl-D"},
+	learned:  "none of these are commands about your files — they are about your hands. Tab, ↑, `clear` and Ctrl-C are what make a shell quick to use rather than slow to suffer.",
+	extraTip: "`Ctrl-R` searches your history as you type, which is usually faster than reaching for ↑ when you half-remember a command.",
 	seed: []plant{
 		{at: "secret/note.txt", text: "no flag lives here.\njust habits — make them yours.\n"},
 	},

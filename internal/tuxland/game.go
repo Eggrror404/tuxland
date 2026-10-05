@@ -259,6 +259,15 @@ func (g *game) levelComplete(lv *level) {
 	} else {
 		u.proseWith(first, hangFor(first), span{fmt.Sprintf("LEVEL %d COMPLETE", lv.num), ansiBold})
 	}
+	// What was learned, and one thing to try that the level did not ask for. A list
+	// of commands is a record of the session; these are the two sentences worth
+	// keeping, and they are the only part of this screen that is not a list.
+	if lv.learned != "" {
+		u.proseWith("  "+u.col(ansiDim, "take away: "), "  ", span{lv.learned, ""})
+	}
+	if lv.extraTip != "" {
+		u.proseWith("  "+u.col(ansiDim, "try this: "), "  ", span{lv.extraTip, ""})
+	}
 	u.proseWith("  "+u.col(ansiDim, "you just used: "), "  ",
 		span{strings.Join(lv.used, " · "), ""})
 	// A finished level is a finished level: the menu offers it with a ✅ next
@@ -273,6 +282,15 @@ func (g *game) levelComplete(lv *level) {
 		// Nothing is lost but the convenience of being remembered, and a
 		// student mid-level does not need to hear about a failed write.
 		_ = g.prog.save()
+	}
+	// What a reset would do, said where the student has just been told they are
+	// remembered. Not a tutorial and not a warning — the answer to "what if I want
+	// to do this level again", which the play-test asked for and no screen gave.
+	// The last level gets it too: it is the level most likely to be replayed, and
+	// it is the one whose "Press Enter for Level 7" does not exist to lean on.
+	if !lv.isExtra() {
+		u.prose("  ", "  ", fmt.Sprintf("To play it again: `tuxland -level %d` starts this level fresh — "+
+			"its folder is wiped and rebuilt, and the other levels keep what they made.", lv.num))
 	}
 	if lv.isExtra() {
 		// The toolbox has no "next level": the menu is where it came from, and
