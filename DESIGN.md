@@ -117,6 +117,17 @@ rendered by a real command.
   level folder as its working directory and a plain custom `PS1`. Our stdin goes raw and
   every keystroke is forwarded to the pty verbatim, so Ctrl-C, arrows and tab reach bash
   untouched; pty output is relayed to the screen.
+- **The shell is spawned with a cleaned environment, because a key the game documents is
+  the game's to own.** `--norc` and `INPUTRC=/dev/null` already stop a stray `.inputrc` from
+  remapping the student's keys; `HISTFILE=/dev/null` stops a real history file; and
+  `withoutEnv` drops `ignoreeof`, which turns Ctrl-D at an empty prompt from *leave* into
+  `Use "exit" to leave the shell.` — forever, silently, on any machine whose image or
+  `.bashrc` set it. That one is not cosmetic: it is the way out of every level, and it is
+  the toolbox's own Ctrl-D lesson, so with it set the level cannot be left and the card
+  teaches a falsehood. The student cannot see where it came from, so the game removes it.
+  Both spellings are covered case-insensitively — bash honours the exported `IGNOREEOF` and
+  the `ignoreeof` a `.bashrc` sets — and the entry is *dropped*, not emptied, because bash
+  reads an empty `ignoreeof` as still set. (`TestCtrlDStillLeavesWhateverTheEnvironmentSays`.)
 - **The Enter boundary is bash's own prompt, and nothing guesses.** The game runs the
   current step's verification when the relay sees the `PS1` marker — the shell saying it
   has nothing left to say. Answering on the marker costs nothing the student can see, for a
@@ -1011,6 +1022,7 @@ real bash and one real command.
 | a prompt marker cut in half by a read is still heard exactly once, and never reaches the screen | `TestAMarkerSplitAcrossTwoReadsIsStillHeard` |
 | only a real marker prefix is held for the next read — ordinary output is never delayed | `TestAChunkThatEndsInOrdinaryTextIsNeverHeldBack` |
 | the game can tell a student stuck at a prompt from a student in `man ls`, and it changes its mind back when the pager is left | `TestTheGameCanAskWhetherBashStillOwnsTheTerminal` |
+| Ctrl-D still leaves the shell on a machine whose environment sets `ignoreeof`, and both spellings of it are dropped from the child env rather than emptied | `TestCtrlDStillLeavesWhateverTheEnvironmentSays` |
 | a closed level leaves nothing behind — no goroutine, no `SIGWINCH` handler, nothing resizing a pty nobody is watching | `TestAClosedSessionLeavesNothingWatchingIt` |
 
 ### The playground root
@@ -1088,6 +1100,11 @@ the right thing one layer below the truth.
 - A nudge or ✅ printed while the student is mid-line leaves their text above it. The nudge
   waits for the terminal to belong to bash and the check only fires after a submitted line,
   so both are left alone.
+- The shell inherits our environment, so a variable we did not think of can still change a
+  key (§3 strips `ignoreeof` because it broke Ctrl-D; that was found by a test failing in
+  one sandbox and not another, which is the only kind of environment bug that gets found
+  at all). The list is not a proof — it is one variable, kept honest by the observation that
+  it took a real pty session to notice. A new variable would be found the same way.
 - The `backstop` (§3) cannot tell a finished command from one still running if the command
   makes the artifact itself: `sleep 60 && mkdir done` advances the card while `sleep` is
   still on screen. Accepted, because the ✅ is true and the alternative is worse — holding

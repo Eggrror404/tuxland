@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -69,6 +70,39 @@ const bashReady = '\u2060' // word joiner: an invisible character bash will stil
 // bashReadyBytes is the same marker as the relay sees it.
 var bashReadyBytes = []byte(string(bashReady))
 
+// withoutEnv returns env without the named variables, compared
+// case-insensitively. Setting one to an empty value is not enough — bash reads an
+// empty `ignoreeof` as still set — so the entry has to be gone.
+//
+// One variable is on this list today, and it earns the helper. `ignoreeof` turns
+// Ctrl-D at an empty prompt from *leave* into "Use \"exit\" to leave the shell.",
+// forever, which silently breaks the way out of a level and turns the toolbox's own
+// Ctrl-D card into a lie. It arrives from a container image, a distro default or
+// someone's .bashrc — invisible to the player and not their doing. Anything the
+// game documents as a key belongs to the game, whatever the environment says.
+//
+// Case-insensitive because bash honours two spellings: an exported shell variable
+// arrives as `IGNOREEOF`, and `ignoreeof` set in a .bashrc arrives as it stands.
+// Case folding covers both, plus any mixed-case spelling, and the only name it can
+// over-match is a near-identical one nobody exports.
+func withoutEnv(env []string, names ...string) []string {
+	out := make([]string, 0, len(env))
+	for _, kv := range env {
+		name, _, _ := strings.Cut(kv, "=")
+		skip := false
+		for _, drop := range names {
+			if strings.EqualFold(name, drop) {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			out = append(out, kv)
+		}
+	}
+	return out
+}
+
 func newSession(dir string, u *ui) (*session, error) {
 	bash, err := exec.LookPath("bash")
 	if err != nil {
@@ -77,7 +111,7 @@ func newSession(dir string, u *ui) (*session, error) {
 
 	cmd := exec.Command(bash, "--norc", "--noprofile", "-i")
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(withoutEnv(os.Environ(), "ignoreeof"),
 		"PS1="+string(bashReady), // the game draws the prompt; this rune only says "I'm up"
 		"PS2=> ",                 // continuation lines look sane
 		"HISTFILE=/dev/null",     // nothing outside the playground is touched

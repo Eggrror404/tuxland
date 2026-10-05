@@ -3,8 +3,10 @@ package tuxland
 import (
 	"bytes"
 	"io"
+	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -65,6 +67,69 @@ func TestAChunkThatEndsInOrdinaryTextIsNeverHeldBack(t *testing.T) {
 	}
 	if out, _ := (&session{}).takeMarker([]byte("\xe2\x81")); len(out) != 0 {
 		t.Errorf("a possible marker prefix was written instead of held: %q", out)
+	}
+}
+
+// TestCtrlDStillLeavesWhateverTheEnvironmentSays: the shell the game spawns
+// inherits an environment the player never saw — a container image, a distro
+// default, someone's .bashrc — and a key the game documents as a way out has to
+// work anyway. `ignoreeof` is the one that bites: set, and Ctrl-D at an empty
+// prompt answers "Use \"exit\" to leave the shell." forever, so the level cannot
+// be left and the toolbox's own Ctrl-D card becomes a lie.
+//
+// Two checks, because either alone would pass by accident. The stripping is the
+// pure function, and an empty value is not enough — bash reads an empty
+// `ignoreeof` as still set, so the entry has to be gone. The second half asks the
+// real shell, since what actually matters is not the variable list but whether
+// the key works.
+func TestCtrlDStillLeavesWhateverTheEnvironmentSays(t *testing.T) {
+	// bash honours two spellings — the exported `IGNOREEOF` and the `ignoreeof` a
+	// .bashrc sets — and an empty value counts as set, so both forms have to go. A
+	// name that merely resembles one is left alone.
+	env := []string{
+		"PATH=/bin", "ignoreeof=1", "IGNOREEOF=", "IgnoreEof=2",
+		"TUXLAND_TEST=keep", "TERM=xterm",
+	}
+	got := withoutEnv(env, "ignoreeof")
+	want := []string{"PATH=/bin", "TUXLAND_TEST=keep", "TERM=xterm"}
+	if len(got) != len(want) {
+		t.Fatalf("withoutEnv kept %q, want %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("withoutEnv gave %q, want %q", got, want)
+		}
+	}
+	// The caller's slice is left alone: os.Environ() is a fresh slice each time,
+	// but a test that mutated it would hide that this returns a new one.
+	if env[1] != "ignoreeof=1" || len(env) != 6 {
+		t.Fatalf("withoutEnv changed the slice it was given: %q", env)
+	}
+
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("no bash on PATH")
+	}
+	// Only worth running where the environment actually does set it: the point is
+	// that the game survives it, not that every machine has it.
+	set := false
+	for _, kv := range os.Environ() {
+		if name, _, _ := strings.Cut(kv, "="); strings.EqualFold(name, "ignoreeof") {
+			set = true
+		}
+	}
+	if !set {
+		t.Skip("this environment does not set ignoreeof, so there is nothing to survive")
+	}
+	s, err := newSession(t.TempDir(), newUI(io.Discard))
+	if err != nil {
+		t.Fatalf("newSession: %v", err)
+	}
+	defer s.close()
+	s.keys([]byte("\x04")) // Ctrl-D at an empty prompt: leave
+	select {
+	case <-s.wait:
+	case <-time.After(10 * time.Second):
+		t.Error("Ctrl-D did not end the shell, and an inherited ignoreeof is the likeliest reason")
 	}
 }
 
