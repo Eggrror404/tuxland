@@ -18,10 +18,11 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # `bc` because level 3 feeds a calculator to teach `<` and `|`, and `man`
-      # for the habits toolbox. Both are documented requirements in README.md.
-      # Level 3 refuses to run without `bc`, so without it here that test would
-      # skip on a refusal instead of playing the level.
+      # `bc`, because level 3 feeds a calculator to teach `<` and `|`. The game
+      # refuses that level outright without it, so the replay would skip on a
+      # refusal rather than play it. `man` is here for the habits toolbox's card —
+      # a missing `man` costs that one card, not the suite, so it is belt and
+      # braces for a test that also runs where `man` is absent.
       - name: Install the tools the game shells out to
         run: sudo apt-get update && sudo apt-get install -y bc man-db
 

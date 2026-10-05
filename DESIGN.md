@@ -262,11 +262,12 @@ rendered by a real command.
   student had just learned the level's commands and was being told which one to pick.
   This is a line the *writing* has to hold rather than a test (§8).
 - A flag step has no `check` (nothing to grade — the token is caught on screen), so its
-  hints arrive on the **time-based nudge** instead of a miss, every 50 s — and only while
-  bash owns the terminal, so a student who went off to read something is left reading.
-  That is what
-  makes the ladder worth keeping: the answer is two minutes away, and a student who was
-  going to find it never waits for it.
+  ladder is hung on **submitted guesses** instead of failed checks, with the same silence on
+  the first one. A wrong guess is indistinguishable from a right one until the word is
+  printed, so the count is the only fact available — and silence forever would teach nothing:
+  a student who has guessed `ls` five times learns as little from the fifth as from the first.
+  The **time-based nudge** still exists alongside it, every 50 s and only while bash owns the
+  terminal, because a student who went off to read something should be left reading.
 - No hint and no note ever contains the token value.
 
 ## 5. Interface (locked)
@@ -330,8 +331,7 @@ indent under it. The rules that came out of it, all in `ui.go`:
 **Kickoff** (default run — the level menu; `-level N` skips straight into a level):
 
 ```
-  🐧 TUXLAND
-  the guided command-line game
+  🐧 TUXLAND  the guided command-line game
 
   How it works
   • you type REAL bash — this is a real shell on real files
@@ -923,6 +923,7 @@ none):
 | a scripted run stays plain text: no carriage return reaches a pipe | `TestAScriptedRunStaysClean` |
 | a prompt opens its own row, whatever the shell left the cursor on (a cleared screen ends in no newline at all) | `TestAPromptAlwaysOpensItsOwnRow` |
 | two warnings in one beat are two lines and one prompt — the hint ladder's escape line lands with the hint | `TestTwoWarningsInOneBeatMakeTwoLines` |
+| a stuck flag hunt climbs its own ladder: silent on the first guess, then every rung and back around, and the card's goal stands in when a card has no hints | `TestAStuckFlagHuntClimbsItsLadder` |
 
 ### When the game may speak
 
@@ -981,7 +982,7 @@ shared with the layout tests above.
 | a digit above 6 is ignored — the toolbox has no number | `TestMenuKeysMoveTheSelection` |
 | a repaint replaces the line, never adds a second one or leaves a tail | `TestARepaintReplacesTheLineItself` (model) + `expectMenu` (pty) |
 | the level name survives the colour (measured stripped, not with the escapes) | `TestTheMenuNamesTheLevelInColour` |
-| the menu's committed line is the level that opens, at any width | `TestTheMenuPicksTheLevel` (9 choices on a real pty) |
+| the menu's committed line is the level that opens, at any width | `TestTheMenuPicksTheLevel` (10 choices on a real pty) |
 | finished levels carry a ✅ and only those — numbers still lined up — and the cursor starts on the first one left | `TestTheMenuRemembersWhatYouFinished` (5 seeded states) |
 | the toolbox is remembered apart (never counted, never "next up"), and a junk `extra` flag is ignored | `TestTheExtraIsRememberedButNotCounted`, `TestAHandEditedExtraFlagIsIgnoredWhenItIsNotTrue` |
 | the file is the shape described, read leniently, written atomically and sorted | `TestBadProgressIsIgnoredNotFatal`, `TestTheProgressFileIsNeverLeftHalfWritten` |

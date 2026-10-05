@@ -21,8 +21,10 @@ being bash — tab-completion, arrow keys, `Ctrl-C`, colours, all of it.
 
 - A step is done when its **artifact appears on disk** (`first.txt` exists, `data.txt`
   is `-rw-------`, …). The game never reads what you typed.
-- Miss twice and a **hint** shows up on its own. The first miss is left silent —
-  bash's own error message has already told you what went wrong.
+- Try twice and a **hint** shows up on its own. The first try is left silent — on a
+  task card because bash's own error message has already told you what went wrong,
+  and on a flag hunt because the word is usually still there and you need to look
+  rather than be told. After that the hints escalate.
 - Every level ends with a **flag hunt**: a `linuxlab-…` word is hidden in the
   playground. Print it (`cat`, `grep`, a script of your own…) and the game catches it
   on screen. There is nothing to type back.
@@ -103,6 +105,11 @@ system changes, no shell history files. Bash mistakes here cost nothing.
   ```
   prints every level and every card in order — goal, note, hint ladder, ✅ line and
   what it plants — which is the whole game as text. It skips without `DUMP`.
+- **Playing a level yourself, unattended:** `TUXLAND_REPLAY=N` runs just level N,
+  typing real commands at a throwaway playground and waiting for the level's own
+  completion banner. It is the check that exercises content, artifact checks and
+  layout together, so it is where a card that reads fine but cannot be passed shows
+  up. `TUXLAND_WIDTH` and `TUXLAND_DUMP` work with it too.
 - **No dead air:** the game answers your Enter when bash's prompt says it is done, not
   on a timer, and a slow command is still answered *below* its output. The one thing it
   asks the terminal instead of guessing: whether bash still owns it, which is how the
@@ -115,8 +122,9 @@ system changes, no shell history files. Bash mistakes here cost nothing.
   dependency of that one level and nothing else: the game looks for `bc` before
   it scaffolds anything and stops with the install command rather than stalling
   at a card that cannot be passed — `-level 3` on a machine without it prints
-  that message and changes nothing. **`man`**, for the unnumbered habits toolbox;
-  a missing `man` costs one optional card, not a level.
+  that message and changes nothing. **`man`**, for one card of the unnumbered habits
+  toolbox. The game does not check for it and nothing is skipped: the card is still
+  drawn, and bash says `man: command not found` if you run it.
   Nothing is installed and nothing is fetched: no root, no packages, no network.
   If an ssh session dies mid-level the game exits on its own and leaves no shell
   behind.
