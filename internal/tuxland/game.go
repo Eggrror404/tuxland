@@ -450,6 +450,25 @@ type stepState struct {
 	lastCheck time.Time
 }
 
+// nudgeHunt is the flag hunt's hint ladder. A hunt has no check, so a wrong guess
+// looks exactly like a right one until the token lands on the screen, and the game
+// cannot tell them apart — but it can count the guesses, and the count is what the
+// ladder was always hung on.
+//
+// Silence on the first guess is right: the word is usually still on the disk and the
+// student needs to look, not be told. Silence *forever* is not: a student who has
+// guessed `ls` five times learns as little from the fifth as from the first. So the
+// first rung is the same one a task card gets, and the flag cards' own hints were
+// written for exactly this — narrowing, then pointing at the place, and only the last
+// one handing over the command. Nothing here can hand over the word: `hint` never
+// returns the token.
+func (g *game) nudgeHunt(st *stepState) {
+	if st.step.kind != kindFlag || st.presses < hintAfter {
+		return
+	}
+	g.warn("not there yet", st.hint(st.presses-hintAfter))
+}
+
 // rescue names the way out of a card that may not be satisfiable at all.
 //
 // The game only looks at the disk, which makes it trustworthy and blind: a
@@ -521,6 +540,15 @@ func (g *game) supervise(st *stepState) bool {
 			// right one until the token lands on the screen — which is right
 			// while the word is still somewhere on the disk, and silence
 			// forever if the student deleted it. Count the attempts here.
+			//
+			// Silence is right, but silence *forever* teaches nothing: a
+			// student who has guessed `ls` five times learns as little from
+			// the fifth as from the first. So the ladder a task card uses
+			// runs here too, counted in attempts instead of failed checks,
+			// and every flag card already carries the hints for it — L1's
+			// send the student to `ls -a` rather than spelling out that the
+			// word is in a name.
+			g.nudgeHunt(st)
 			g.rescue(st)
 			g.ui.prompt()
 		case moveOn:

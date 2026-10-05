@@ -537,6 +537,64 @@ func TestTwoWarningsInOneBeatMakeTwoLines(t *testing.T) {
 	}
 }
 
+// TestAStuckFlagHuntClimbsItsLadder: a hunt has no check to fail, so the game
+// counts guesses instead of misses — and the flag cards' hints were written for
+// that, only nothing ever called for them. Every rung has to be reachable and the
+// ladder has to come back around rather than run out, or a student past the end
+// gets silence again.
+func TestAStuckFlagHuntClimbsItsLadder(t *testing.T) {
+	// Spelled without backticks: the card renders them as code spans, so the
+	// drawn text is the bare command.
+	hints := []string{"look for the dot", "ls -a, then read the names", "cat inbox/delivery.txt"}
+	for press := 1; press <= len(hints)+2; press++ {
+		var buf bytes.Buffer
+		u := newUI(&buf)
+		u.cols = 80
+		g := &game{ui: u}
+		st := &stepState{
+			step: &step{kind: kindFlag, goal: "a folder has appeared", hints: hints},
+			// presses counts every submitted line on the card, so the ladder
+			// starts on the second one exactly as it does on a task card.
+			presses: press,
+		}
+		g.nudgeHunt(st)
+		out := buf.String()
+		wantSpoken := press >= hintAfter
+		if gotSpoken := out != ""; gotSpoken != wantSpoken {
+			t.Errorf("guess %d: spoke=%v, want %v (%q)", press, gotSpoken, wantSpoken, out)
+			continue
+		}
+		if !wantSpoken {
+			continue
+		}
+		want := hints[(press-hintAfter)%len(hints)]
+		if !strings.Contains(out, want) {
+			t.Errorf("guess %d: the ladder said %q, want %q", press, strings.TrimSpace(out), want)
+		}
+	}
+
+	// A hunt whose card has no hints must not go quiet — the goal is the rung.
+	var buf bytes.Buffer
+	u := newUI(&buf)
+	u.cols = 80
+	g := &game{ui: u}
+	g.nudgeHunt(&stepState{step: &step{kind: kindFlag, goal: "a folder has appeared"}, presses: stuckAfter})
+	if out := buf.String(); !strings.Contains(out, "a folder has appeared") {
+		t.Errorf("a hunt with no hints of its own fell silent, want the goal: %q", out)
+	}
+
+	// A task card is not a hunt: its ladder belongs to tryTask, and calling this
+	// on one would double every hint.
+	buf.Reset()
+	g.nudgeHunt(&stepState{
+		step:    &step{kind: kindTask, goal: "make a folder named `done`", hints: hints},
+		presses: stuckAfter,
+	})
+	if out := buf.String(); out != "" {
+		t.Errorf("a task card was given a second hint ladder: %q", out)
+	}
+}
+
 // TestALevelSaysWhatItNeeds: a level that types at a program outside a base
 // system has to declare it, because the game refuses to start without one — and
 // the declaration is one of the level's own advertised commands, so `-list` shows
