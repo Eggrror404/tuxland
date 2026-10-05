@@ -53,17 +53,20 @@ func safeRoot(dir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("tuxland: LINUXLAB_ROOT %q is not a usable path: %w", dir, err)
 	}
-	// A symlink only matters once it exists; EvalSymlinks failing on the folder
-	// the game is about to create is not a reason to refuse.
-	if real, err := filepath.EvalSymlinks(abs); err == nil {
-		abs = real
-	}
-	if fi, err := os.Stat(abs); err == nil && !fi.IsDir() {
+	// A symlink only matters once it exists, and the playground is the one folder
+	// the game makes itself — so resolve as much of the path as is already there
+	// and keep the missing tail as written. What comes back stays the way the
+	// student spelled it, so a `~` in there still shows as `~` in the banner.
+	target := resolve(abs)
+	if fi, err := os.Stat(target); err == nil && !fi.IsDir() {
 		return "", fmt.Errorf("tuxland: LINUXLAB_ROOT %s is a file, not a folder", abs)
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		for _, never := range []string{string(filepath.Separator), filepath.Clean(home), filepath.Clean(cwd)} {
-			if abs == never {
+		for _, never := range []string{string(filepath.Separator), home, cwd} {
+			// Both sides resolved, or this guard is a name comparison a symlink walks
+			// past: network homes are nearly always reached through one, and
+			// `LINUXLAB_ROOT=$HOME` behind it used to be taken as a folder of its own.
+			if target == resolve(never) {
 				return "", fmt.Errorf("tuxland: refusing to use %s as LINUXLAB_ROOT — every run wipes and "+
 					"rebuilds the level folders inside it. Point it at a folder of its own, like %s",
 					abs, defaultRoot(home))
@@ -71,6 +74,21 @@ func safeRoot(dir string) (string, error) {
 		}
 	}
 	return abs, nil
+}
+
+// resolve walks the symlinks in as much of path as exists and keeps the rest as
+// written. filepath.EvalSymlinks gives up on a path whose tail is missing, but
+// that is the normal state of a playground, and the home folder above it is
+// still a symlink that needs seeing through.
+func resolve(path string) string {
+	if real, err := filepath.EvalSymlinks(path); err == nil {
+		return filepath.Clean(real)
+	}
+	parent, base := filepath.Split(path)
+	if parent == "" || parent == path {
+		return filepath.Clean(path) // nothing above to look at
+	}
+	return filepath.Join(resolve(filepath.Clean(parent)), base)
 }
 
 // levelDirName is the playground folder a level lives in. The extra has no

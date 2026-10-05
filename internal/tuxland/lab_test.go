@@ -32,6 +32,42 @@ func TestTheLabRootRefusesAFolderItWouldWipe(t *testing.T) {
 	}
 }
 
+// The guard compares the root against the home folder and the working folder, so
+// it has to compare like with like. Home folders reached through a symlink — a
+// network home, a course share, `/home/student/14/…` — are the common case, not
+// the exotic one, and `LINUXLAB_ROOT=$HOME` behind such a symlink used to sail
+// straight through: the candidate was resolved, the two it must not equal were not.
+func TestTheLabRootRefusesAFolderHiddenBehindASymlink(t *testing.T) {
+	base := t.TempDir()
+	real := filepath.Join(base, "the-real-home")
+	if err := os.MkdirAll(real, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	link := filepath.Join(base, "a-nice-short-home")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("cannot make a symlink here: %v", err)
+	}
+	t.Setenv("HOME", link)
+
+	// The same folder, reached two ways. Both are the home folder, so both are
+	// refused, and the refusal has to name the real path — that is what the game
+	// would have wiped.
+	for _, never := range []string{link, real, "~", "~/"} {
+		t.Setenv("LINUXLAB_ROOT", never)
+		if root, err := labRoot(); err == nil {
+			t.Errorf("LINUXLAB_ROOT=%s was accepted as %s", never, root)
+		}
+	}
+	// A folder inside the home is still a folder of its own — the guard is about
+	// the folder itself, not about how you got to it.
+	t.Setenv("LINUXLAB_ROOT", filepath.Join(link, "linux-lab"))
+	if got, err := labRoot(); err != nil {
+		t.Errorf("LINUXLAB_ROOT=<home>/linux-lab was refused: %v", err)
+	} else if want := filepath.Join(link, "linux-lab"); got != want {
+		t.Errorf("LINUXLAB_ROOT=<home>/linux-lab came back as %s, want %s", got, want)
+	}
+}
+
 // And the other half: a folder of its own is taken as asked, `~` and `~/…` are
 // expanded, and what comes back is absolute — so a playground is never named
 // relative to wherever the game happened to be started.
