@@ -47,8 +47,11 @@ checks for it and says so rather than starting a level it cannot finish.
 go install github.com/Eggrror404/tuxland@latest
 ```
 
-or download a prebuilt binary from [**Releases**](../../releases) — one static file,
-nothing to install. Either way, put it on your `PATH` and:
+or download a prebuilt binary from [**Releases**](../../releases) — one static file per
+platform, named `tuxland-<os>-<arch>` (`amd64` is what your machine calls `x86_64`,
+`arm64` is what it calls `aarch64`). `curl -fLO` both the binary and its `.sha256`,
+`chmod +x`, and you are done; [`WORKSHOP.md`](WORKSHOP.md) has the whole checklist,
+including what to check when a download goes wrong. Either way, put it on your `PATH` and:
 
 ```sh
 tuxland            # the menu: pick a level, then play it
@@ -63,6 +66,11 @@ same commands inside it.
 
 **From source:** clone and `go build -o tuxland .` (see *For developers* below).
 
+**Running a session for other people:** [`WORKSHOP.md`](WORKSHOP.md) is the instructor's
+file — the download checks, what to say in the first eight minutes, a per-level prompt
+for each level, and a table of what to do when something fails on a workshop machine.
+Colour is decoration: `NO_COLOR=1 ./tuxland` is the same game in plain text.
+
 ## Safety
 
 Everything happens in a scratch folder inside your home:
@@ -75,8 +83,10 @@ mistyped `~` or `/` reaches outside the playground. Nothing you learn here shoul
 typed anywhere it matters — which is most of why the levels make you look before you
 `rm`.
 
-- **Reset a level:** just run it again. Starting a level wipes and rebuilds its
-  folder, so you always get a clean playground.
+- **Reset a level:** just run it again, or `tuxland -level N`. Starting a level wipes
+  and rebuilds *that level's* folder — nothing else in `~/linux-lab` is touched, so the
+  other levels' work and your `progress.json` stay as they were. That is the whole reset
+  story: re-run it and you are clean again.
 - **Your score:** finished levels are remembered in `~/linux-lab/progress.json` — the
   menu ticks them ✅ and offers the next one. Delete that file to start over, or:
 - **Start completely clean:** `rm -rf ~/linux-lab`.

@@ -3,6 +3,7 @@ package tuxland
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -173,6 +174,60 @@ func TestTheStudentSeesNoStaircase(t *testing.T) {
 						s.name, cols, i+2, col)
 				}
 			}
+		}
+	}
+}
+
+// A colour is never the only thing carrying a meaning. Every screen is drawn twice
+// at the same width — once with colour and once without — and the two must say the
+// same words in the same places. If they ever diverge, a student who cannot see
+// that colour (a projector, a colour-vision deficiency, `NO_COLOR=1`, a screen
+// reader announcing escape sequences) has been handed a different game.
+//
+// It holds because `col` is the only thing colour touches: it either wraps a span
+// in an attribute or returns it unchanged. Anything that hid or substituted a
+// glyph for a colour instead would break here.
+func TestNoMeaningIsCarriedByColourAlone(t *testing.T) {
+	for _, cols := range []int{40, 80} {
+		for _, s := range everyScreen() {
+			withColor := renderOn(t, cols, true, true, s)
+			plain := renderOn(t, cols, true, false, s)
+			if got, want := stripANSI(withColor), plain; got != want {
+				t.Errorf("%s at %d cols: colour changes the words.\n colour: %q\n   plain: %q",
+					s.name, cols, got, want)
+			}
+		}
+	}
+}
+
+// And NO_COLOR is honoured wherever the game draws, which is the point of it: the
+// same binary, not a different build. The gate lives in `col` rather than in the
+// colour flag, so it holds even for a ui told to colour — which is what this sets,
+// since no test can hand `newUI` a real terminal.
+func TestNoColorEnvTurnsTheColourOff(t *testing.T) {
+	for _, tc := range []struct {
+		name, value string
+		set         bool
+		want        bool
+	}{
+		{"unset", "", false, false},
+		{"one", "1", true, true},
+		{"any value", "please dont", true, true},
+		{"empty, which is what NO_COLOR= sets", "", true, true},
+	} {
+		if tc.set {
+			t.Setenv("NO_COLOR", tc.value)
+		} else {
+			os.Unsetenv("NO_COLOR")
+		}
+		if got := noColorEnv(); got != tc.want {
+			t.Errorf("%s: noColorEnv() = %v, want %v", tc.name, got, tc.want)
+		}
+		u := newUI(&bytes.Buffer{})
+		u.tty, u.color = true, true // ask for colour as loudly as possible
+		if got := u.col(ansiBold, "hello"); strings.Contains(got, "\x1b") == tc.want {
+			t.Errorf("%s: col() with color on emitted %q, want attribute %v",
+				tc.name, got, !tc.want)
 		}
 	}
 }

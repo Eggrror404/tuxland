@@ -6,8 +6,10 @@ is the single source of truth for the build — philosophy in §1, mechanics in 
 screen in §5, the level content and the reasoning behind it in §7, and how it is
 verified in §8. Expected reader: a fresh agent session that will write the code.
 
-Related doc: `README.md` (player-facing: install, build, dependencies, the `DUMP` /
-`TUXLAND_REPLAY` dev tools).
+Related docs: `README.md` (player-facing: install, build, dependencies, the `DUMP` /
+`TUXLAND_REPLAY` dev tools) and `WORKSHOP.md` (instructor-facing: the download
+checklist, what to say in the first eight minutes, and what to do when something fails
+on a workshop machine — none of which is a design decision, so none of it is here).
 
 **On "the deck".** tuxland was written for a Linux-introduction workshop whose slide
 deck lives in a separate repository that is not shipped here. Wherever this document
@@ -950,6 +952,8 @@ none):
 | at 80 columns the look is the one §5 draws (the bars, the ≤ 8-line card) | `TestAStandardTerminalKeepsTheLookTheDesignDraws` |
 | a wrap is greedy, breaks only on spaces, and hands back untouched slices | `TestWrapIsGreedyAndVerbatim` |
 | a wrapped hint keeps its voice — the command stays bold cyan across the break | `TestAWrappedHintKeepsItsVoice` |
+| no screen says different *words* with the colour on than with it off — colour is emphasis, never the only carrier of a meaning | `TestNoMeaningIsCarriedByColourAlone` |
+| `NO_COLOR` (any value, the empty one included) turns every attribute off, at the one place colour is emitted | `TestNoColorEnvTurnsTheColourOff` |
 | a `` `command` `` moves down whole and stays styled; a flag stays with its command | `TestCodeSpansStayWholeAndStyled` |
 | a glob inside backticks keeps its star | `TestMarkupKeepsAGlobIntact` |
 | a hanging indent is as wide as the prefix it hangs from | `TestHangAlignsUnderItsPrefix` |
@@ -1036,7 +1040,10 @@ the right thing one layer below the truth.
 - No command-line parsing / in-game keywords (`next`, `hint`, `help`).
 - No quizzes beyond the flag token, and no simulated shell.
 - No hosted wargame server, and no cross-platform portability work.
-- No sudo and no system changes; nothing outside the scratch dir may be touched.
+- No sudo and no system changes. The game never touches anything outside the scratch dir —
+  but the *student* gets a real bash running as them, so `rm` there is `rm` everywhere.
+  §5's banner and *README*'s *Safety* say so in those words rather than promising that
+  nothing outside can break, which is not a promise bash can keep.
 - No timing tuning: the game answers on bash's prompt (§3), so there is nothing to tune.
 
 ## 10. Known hazards, accepted

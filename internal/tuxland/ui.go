@@ -38,6 +38,7 @@ type ui struct {
 	w       io.Writer
 	tty     bool // our stdout is a terminal: colors on, and nobody is scripted
 	color   bool
+	noColor bool // NO_COLOR is set: never emit an attribute, whatever color says
 	cols    int  // 0 = ask the terminal; tests pin it
 	afterCR bool // the byte we wrote last was a CR; guarded by mu
 	atStart bool // the cursor sits at the start of a row, ready for text; guarded by mu
@@ -49,7 +50,22 @@ func newUI(w io.Writer) *ui {
 		tty = term.IsTerminal(int(f.Fd()))
 	}
 	// Nothing has been drawn yet, so the cursor is where a row begins.
-	return &ui{w: w, tty: tty, color: tty, atStart: true}
+	return &ui{w: w, tty: tty, color: tty, noColor: noColorEnv(), atStart: true}
+}
+
+// noColorEnv is the NO_COLOR convention every other CLI honours (no-color.org):
+// any value at all switches colour off, the empty string included. A workshop
+// projects onto a bad screen, someone has a colour-vision deficiency, a screen
+// reader announces escape sequences — none of that should need a different
+// binary, and none of it loses information: colour is emphasis, never the only
+// thing carrying a meaning.
+//
+// Read once, at construction, and kept on the ui rather than consulted per span —
+// and enforced in `col`, which is the one place colour is emitted, so nothing can
+// switch colour back on by accident.
+func noColorEnv() bool {
+	_, set := os.LookupEnv("NO_COLOR")
+	return set
 }
 
 // width is how many columns we have to play with, or 80 when we can't ask
@@ -415,9 +431,11 @@ func codeSpanAt(ranges [][2]int, lineAt, at int) (open, close int) {
 	return -1, -1
 }
 
-// col wraps s in an ANSI attribute — or returns it unchanged when color is off.
+// col wraps s in an ANSI attribute — or returns it unchanged when color is off, or
+// when NO_COLOR says so. Everything the game draws goes through here, so this is
+// the one place that has to be right about colour.
 func (u *ui) col(attr, s string) string {
-	if !u.color || attr == "" || s == "" {
+	if !u.color || u.noColor || attr == "" || s == "" {
 		return s
 	}
 	return attr + s + ansiReset
