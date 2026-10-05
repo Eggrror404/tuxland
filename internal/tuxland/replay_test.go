@@ -114,7 +114,7 @@ var replays = map[int][]move{
 		// The regroup card before the deleting: two listings, then the read tap.
 		move{at: "look at everything you have made so far", type_: []string{"ls", "ls done", ""}},
 		fix("make a throwaway file named throwaway.txt", "touch throwaway.txt"),
-		fix("delete it", "rm throwaway.txt"),
+		fix("delete `throwaway.txt`", "rm throwaway.txt"),
 		fix("delete the whole done/ folder", "rm -r done"),
 		hunt("the folder holds another", "cat notes/ideas.txt"),
 	},

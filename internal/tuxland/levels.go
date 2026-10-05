@@ -425,7 +425,7 @@ var level2 = &level{
 				},
 				{
 					kind: kindTask,
-					goal: "delete it — for good",
+					goal: "delete `throwaway.txt` — for good",
 					note: "`rm` has no trash can: look before you `rm`",
 					hints: []string{
 						"`rm throwaway.txt`",
@@ -566,7 +566,7 @@ nothing here is precious. break it, delete it, make more.
 				},
 				{
 					kind: kindTask,
-					goal: "save *both* lists — today's and the later one — into a file called `both.txt`",
+					goal: "save *both* lists — `today.txt` and `later.txt` — into a file called `both.txt`",
 					note: "`>` catches whatever a command printed, so it works for `cat` too — and `cat` takes as " +
 						"many names as you like, which is why two files still fit on one line",
 					hints: []string{
