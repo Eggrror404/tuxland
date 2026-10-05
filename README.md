@@ -66,8 +66,14 @@ same commands inside it.
 ## Safety
 
 Everything happens in a scratch folder inside your home:
-`~/linux-lab/level-NN-name/`. **Nothing outside that folder is touched** — no sudo, no
-system changes, no shell history files. Bash mistakes here cost nothing.
+`~/linux-lab/level-NN-name/`. **The game itself only ever creates, wipes and checks
+inside that folder** — no sudo, no system changes, no shell history files.
+
+What you *type* is a different matter, and worth being plain about: you get a real
+interactive bash running as you, so `rm` there is the same `rm` as everywhere else. A
+mistyped `~` or `/` reaches outside the playground. Nothing you learn here should be
+typed anywhere it matters — which is most of why the levels make you look before you
+`rm`.
 
 - **Reset a level:** just run it again. Starting a level wipes and rebuilds its
   folder, so you always get a clean playground.

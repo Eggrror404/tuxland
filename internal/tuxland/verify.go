@@ -78,6 +78,23 @@ func lineCountIs(name string, n int) check {
 	}
 }
 
+// lineCountAtLeast: the file has n lines or more. For the steps whose point is
+// *adding* to a file — the question is whether anything was added and whether
+// what was there survived, not what the student chose to write.
+func lineCountAtLeast(name string, n int) check {
+	return func(dir string) bool {
+		got, err := readFile(at(dir, name))
+		if err != nil {
+			return false
+		}
+		got = strings.TrimRight(got, "\n")
+		if got == "" && n > 0 {
+			return false
+		}
+		return len(strings.Split(got, "\n")) >= n
+	}
+}
+
 // modeIs: the permission bits are exactly want (0o600, 0o700, …).
 func modeIs(name string, want os.FileMode) check {
 	return func(dir string) bool {

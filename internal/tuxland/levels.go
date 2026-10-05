@@ -371,8 +371,27 @@ var level2 = &level{
 		},
 		{
 			title: "no trash can",
-			lead:  "the one command here that gives nothing back — so look first.",
+			lead: "the one command here that gives nothing back — and it only gives things back inside " +
+				"this playground. look first.",
 			steps: []step{
+				{
+					// The boundary, said once, with the prompt on screen showing it. A
+					// play-tester's question after `rm -r` was "wait, is that my real
+					// folder?" — and the answer deserves a beat of its own rather than a
+					// clause in the section lead, this close to the first `rm`.
+					kind: kindInfo,
+					goal: "see the folder the next three commands act in",
+					note: "`pwd` — the line under it is this level's playground, a folder of its own inside " +
+						"`~/linux-lab`, and it was made for this. the three cards after this one delete " +
+						"inside it and nowhere else: the game checks nothing but this folder, so that is all " +
+						"any of it can reach. the shell is still a real shell, though — a mistyped `~` or `/` " +
+						"in a command is yours to be careful with.",
+					hints: []string{
+						"`pwd` — read the path it prints: it ends in `level-02-files`",
+						"a path that starts with `~` and holds `linux-lab` is this game's own folder",
+					},
+					done: "seen it — moving on",
+				},
 				{
 					// Eight graded cards in a row was where this level lost people,
 					// and this is the natural seam: everything created so far is
@@ -412,7 +431,9 @@ var level2 = &level{
 				{
 					kind: kindTask,
 					goal: "delete the whole `done/` folder in one command",
-					note: "a folder needs `-r` — plain `rm` only takes files, and bash will say so",
+					note: "this is what `-r` widens: `rm` takes one *file*, `rm -r` takes a *folder* and " +
+						"everything inside it. the flag does not make it safer, it makes it bigger — so the " +
+						"folder needs `-r` and plain `rm` will say no",
 					hints: []string{
 						"try plain `rm done` first if you like: the error tells you which flag it wants",
 						"`rm -r done`",
@@ -556,15 +577,19 @@ nothing here is precious. break it, delete it, make more.
 			steps: []step{
 				{
 					kind: kindTask,
-					goal: "add a line to `greeting.txt` without losing the one already in there",
-					note: "`>>` appends — a second `>` would have wiped the file first",
+					goal: "add a line of your own to `greeting.txt`, without losing the line already in there",
+					note: "`>>` appends — a second `>` would have wiped the file first. any text will do; " +
+						"what matters is that there are two lines now, and the first one is the old one",
 					hints: []string{
-						"`echo \"goodbye\" >> greeting.txt`",
+						"`echo \"goodbye\" >> greeting.txt` — or a word of your own, it makes no difference",
 						"`cat greeting.txt` — two lines now, the first one still there",
 						"if only your line is in there you used one `>`: save it again, then append",
 					},
-					done:  "appended — both lines are in there.",
-					check: all(contentContains("greeting.txt", "goodbye"), contentContains("greeting.txt", "hello")),
+					done: "appended — the new line is under the old one, not instead of it.",
+					// Whatever they typed, the step is `>>`: the old line survives and
+					// something was added after it. Grading on a particular word would
+					// have taught them the answer to guess rather than the thing itself.
+					check: all(lineCountAtLeast("greeting.txt", 2), contentContains("greeting.txt", "hello")),
 				},
 				{
 					kind:  kindInfo,

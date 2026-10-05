@@ -153,7 +153,11 @@ func (g *game) banner(lv *level) {
 	u.proseWith(first, hangFor(first), span{head, ansiBold + ansiYellow})
 	u.prose("  ", "  ", lv.lead)
 	u.proseWith("  "+u.col(ansiDim, "your playground: "), "  ", span{tilde(g.dir), ansiBold + ansiCyan})
-	u.dimline("nothing outside it can break.")
+	// True, and worth saying out loud: the game creates, wipes and grades inside
+	// this folder and nowhere else. But the shell is a real one running as you, so
+	// "nothing outside it can break" would be a promise bash cannot keep — a
+	// mistyped `~` or `/` reaches whatever it names.
+	u.dimline("the game only ever writes in here. the shell is a real one, though — a mistyped `~` or `/` reaches out.")
 	u.line("  " + bar)
 }
 

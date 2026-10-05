@@ -109,6 +109,8 @@ var replays = map[int][]move{
 		fix("move first.txt into done/", "mv first.txt done/"),
 		fix("copy notes/todo.txt into done/", "cp notes/todo.txt done/"),
 		fix("move that copy out of", "mv done/todo.txt backup.txt"),
+		// The boundary card: one `pwd`, and the folder the next three cards act in.
+		read("see the folder the next three commands act in", "pwd"),
 		// The regroup card before the deleting: two listings, then the read tap.
 		move{at: "look at everything you have made so far", type_: []string{"ls", "ls done", ""}},
 		fix("make a throwaway file named throwaway.txt", "touch throwaway.txt"),
@@ -120,7 +122,8 @@ var replays = map[int][]move{
 		read("make the shell say something", `echo "hello"`),
 		fix("save that line into a file called greeting.txt", `echo "hello" > greeting.txt`),
 		fix("save both lists", "cat today.txt later.txt > both.txt"),
-		fix("add a line to greeting.txt", `echo "goodbye" >> greeting.txt`),
+		// Deliberately not the word the hint suggests: the step takes any line.
+		fix("add a line of your own to greeting.txt", `echo "see you" >> greeting.txt`),
 		tap("the difference, in one line"),
 		read("let the calculator work through", "bc < problems.txt"),
 		fix("save those four answers", "bc < problems.txt > answers.txt"),

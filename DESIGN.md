@@ -560,7 +560,8 @@ Scaffold `notes/todo.txt` + `notes/ideas.txt` (the token, `linuxlab-n0t3m4n`).
 - §1 *read first:* info `ls` (look before you open anything) → info `cat notes/todo.txt`
   → task `mkdir done` → task `touch first.txt` → task `mv first.txt done/`.
 - §2 *keep a copy:* task `cp notes/todo.txt done/` → task `mv done/todo.txt backup.txt`.
-- §3 *no trash can:* info `ls` + `ls done` → task `touch throwaway.txt` → task
+- §3 *no trash can:* info `pwd` (the boundary: this is the folder the next three cards act
+  in) → info `ls` + `ls done` → task `touch throwaway.txt` → task
   `rm throwaway.txt` → task `rm -r done` (a folder and its contents: plain `rm` refuses,
   which is the lesson the hint points at).
 - §4 *flag:* one of the notes remembers the magic word — read it with `cat`.
@@ -572,6 +573,17 @@ do. The `d` in the first column answers it. §3 opens on the regroup beat (`ls` 
 because this was eight graded cards with nothing to regroup at, which is where freshmen
 stall; the folder is full and the next three cards delete, and *looking* is the habit that
 section is about, so looking is the card.
+  - **§3 opens with a `pwd` boundary card.** A play-tester asked, just after `rm -r`, whether
+    the folder on screen was their real one. It is a fair question and the answer was only
+    implied by a banner, so the boundary is now a card of its own with the prompt on screen:
+    the playground is `~/linux-lab/level-02-files`, the game grades nothing outside it, and
+    the shell is still a real one. That last clause is the reason the banner's old "nothing
+    outside it can break" had to go — it is a promise bash cannot keep, since `rm ~` is
+    `rm ~`. §8's boundary invariant and *README*'s *Safety* section now say the same thing.
+  - **The `rm -r` note widens the flag rather than just introducing it.** A play-tester read
+    "a folder needs `-r`" as a syntactic fact; the note now says what the flag *changes*
+    (one file → a folder and everything inside it) and that it makes the command bigger, not
+    safer, which is the reason the regroup card sits in front of it.
 
 ### L3 — text-io · `echo > >> < | tee bc` (flag: a folder that lands)
 
@@ -586,6 +598,13 @@ one per line) and `about.txt`.
   printed.
 - §2 *add to it, don't wipe it:* task append a second line without losing the first → a
   text-only beat spelling out `>` replaces / `>>` adds.
+  - **The append step takes any line at all.** It used to grade `contentContains
+    ("greeting.txt", "goodbye")`, so a play-tester's own word was wrong and the card read as
+    "add the word goodbye" while its goal said "add a line". The step teaches `>>`, so the
+    check grades that: the old line survived *and* the file has at least two lines
+    (`lineCountAtLeast("greeting.txt", 2)` alongside `contentContains(… "hello")`). Which
+    word they chose is not the lesson, and requiring it teaches them to guess the answer.
+    The hint offers `goodbye` as an example and says any text will do.
 - §3 *hand a file in:* info `bc < problems.txt` (four answers and you typed no sum at
   all) → task `bc < problems.txt > answers.txt`, **both constructs in one command**.
 - §4 *see it *and* save it:* info `echo "2 + 3" | bc` → task `echo "all done" | tee
@@ -943,6 +962,7 @@ real bash and one real command.
 | invariant | test |
 |---|---|
 | `/`, the home folder, the directory the game was started in, a literal `~` and `~someone` are refused as `$LINUXLAB_ROOT` | `TestTheLabRootRefusesAFolderItWouldWipe` |
+| the same three, reached *through a symlink*: both sides of the comparison are resolved, so a network home is still the home folder | `TestTheLabRootRefusesAFolderHiddenBehindASymlink` |
 | a folder of its own is taken as asked, `~`/`~/…` expanded, the answer absolute, and asking creates nothing | `TestTheLabRootTakesAFolderOfItsOwn`, `TestTheLabRootDefaultsToALabFolder` |
 
 ### The screen, not the bytes
