@@ -57,12 +57,19 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # gh resolves the repository from the git checkout, so this job needs one
+      # even though it only uploads files — without it, `gh release create` fails
+      # with "not a git repository".
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
 
       - name: Tag the release
-        run: gh release create "${GITHUB_REF_NAME}" dist/* --generate-notes
+        # The tag is already pushed — this workflow is triggered *by* it — so
+        # gh publishes a release against it rather than making a new tag.
+        run: gh release create "${GITHUB_REF_NAME}" dist/* --generate-notes --verify-tag
         env:
           GH_TOKEN: ${{ github.token }}
