@@ -51,8 +51,7 @@ go install github.com/Eggrror404/tuxland@latest
 or download a prebuilt binary from [**Releases**](../../releases) — one static file per
 platform, named `tuxland-<os>-<arch>` (`amd64` is what your machine calls `x86_64`,
 `arm64` is what it calls `aarch64`). `curl -fLO` both the binary and its `.sha256`,
-`chmod +x`, and you are done; [`WORKSHOP.md`](WORKSHOP.md) has the whole checklist,
-including what to check when a download goes wrong. Either way, put it on your `PATH` and:
+`chmod +x`, and you are done. Either way, put it on your `PATH` and:
 
 ```sh
 tuxland            # the menu: pick a level, then play it
@@ -67,9 +66,6 @@ same commands inside it.
 
 **From source:** clone and `go build -o tuxland .` (see *For developers* below).
 
-**Running a session for other people:** [`WORKSHOP.md`](WORKSHOP.md) is the instructor's
-file — the download checks, what to say in the first eight minutes, a per-level prompt
-for each level, and a table of what to do when something fails on a workshop machine.
 Colour is decoration: `NO_COLOR=1 ./tuxland` is the same game in plain text.
 
 ## Safety
