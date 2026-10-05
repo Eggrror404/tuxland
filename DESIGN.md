@@ -757,6 +757,21 @@ that script does **not** contain:
   the status column spells the word top to bottom — which still takes a *running* script to
   see. `sh start` works as well as `chmod +x` and `./start`, and `start` is planted 0644
   so `chmod +x` is re-taught on the payoff.
+- **The card still previews what running it does.** A play-tester asked whether `start` was
+  safe before running it, which is a fair question to ask of an unfamiliar script and one
+  the level never answered. The note ends: *"before you run it: it only prints a report,
+  nothing here changes."* That is the whole of it — `huntScript` prints and stops, writes no
+  file and opens none of the others, so the sentence is checkable and the reassurance is
+  real rather than decorative. It gives nothing away: the puzzle is still *how* to run the
+  thing, not what it does, and `grep -Rl bash .` still finds it.
+
+**The card budget is a real constraint on this level.** §8 holds a card to ≤ 8 lines at 80
+columns and the hunt note was already at the ceiling, so the preview had to be paid for out
+of that same note: *"the same kind of file as the `hello` you ran a moment ago"* became
+*"like the `hello` you ran before"*, and *"nothing to type back to me"* went — the card's
+*"I'll spot it when it appears"* already says the student does not have to reply. Content
+that arrives late in a workshop displaces something, so the displacement is written down
+here rather than left as a silent trim.
 
 Decoys `scratch.txt`, `cleanup.log` and `inventory.csv` are planted alongside, none of
 which mentions `bash`, so `grep -Rl bash .` returns exactly two files — the `hello` the

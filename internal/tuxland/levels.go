@@ -1274,10 +1274,10 @@ run one with ./hello once it has the execute bit set.
 				{
 					kind: kindFlag,
 					goal: "a few new files have appeared in this folder — one of them is a script, and you have not run it",
-					note: "I dropped a few things here while you worked. one is a *script* — the same kind of file as the " +
-						"`hello` you ran a moment ago — and it will not hand its secret to a reader. run it, and " +
-						"the word turns up. whatever puts the word on your screen counts. it looks like " +
-						"`linuxlab-…` — I'll spot it the moment it appears. nothing to type back to me.",
+					note: "I dropped a few things here while you worked. one is a *script* — like the `hello` you ran " +
+						"before — and it will not hand its secret to a reader. run it, and the word turns up. whatever " +
+						"puts the word on your screen counts. it looks like `linuxlab-…`; I'll spot it when it appears. " +
+						"before you run it: it only prints a report, nothing here changes.",
 					hints: []string{
 						"new names in this folder — `ls` first, that is the habit",
 						"every script's first line names the interpreter it wants, and `grep -R` looks in here rather than just at one name: `grep -Rl bash .` finds them both",
